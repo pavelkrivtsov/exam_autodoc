@@ -16,7 +16,7 @@ final class FeedStateView: UIView {
 
     var onRetry: (() -> Void)?
 
-    private let spinner = UIActivityIndicatorView(style: .large)
+    private let spinner = LoaderCircularView(size: .medium)
     private let imageView = UIImageView()
     private let messageLabel = UILabel()
     private let retryButton = UIButton(type: .system)
@@ -39,6 +39,7 @@ final class FeedStateView: UIView {
             imageView.isHidden = true
             messageLabel.isHidden = true
             retryButton.isHidden = true
+
         case .empty:
             spinner.stopAnimating()
             imageView.isHidden = false
@@ -46,6 +47,7 @@ final class FeedStateView: UIView {
             messageLabel.isHidden = false
             messageLabel.text = "Пока нет новостей"
             retryButton.isHidden = true
+
         case .error(let message):
             spinner.stopAnimating()
             imageView.isHidden = false
@@ -63,17 +65,19 @@ final class FeedStateView: UIView {
 
     private func setup() {
         imageView.tintColor = .tertiaryLabel
-        imageView.contentMode = .scaleAspectFit
+        imageView.contentMode = .scaleToFill
         imageView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 48, weight: .regular)
         imageView.setContentHuggingPriority(.required, for: .vertical)
 
         messageLabel.font = .preferredFont(forTextStyle: .body)
-        messageLabel.textColor = .secondaryLabel
+        messageLabel.textColor = .adSecondaryText
         messageLabel.textAlignment = .center
         messageLabel.numberOfLines = 0
 
         var config = UIButton.Configuration.borderedProminent()
         config.title = "Повторить"
+        config.baseBackgroundColor = .adBrand
+        config.baseForegroundColor = .white
         retryButton.configuration = config
         retryButton.addTarget(self, action: #selector(retryTapped), for: .touchUpInside)
 

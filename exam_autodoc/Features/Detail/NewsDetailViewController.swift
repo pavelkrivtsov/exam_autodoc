@@ -16,7 +16,7 @@ final class NewsDetailViewController: UIViewController {
     private let scrollView = UIScrollView()
     private let contentStack = UIStackView()
     private let heroImageView = UIImageView()
-    private let heroSpinner = UIActivityIndicatorView(style: .medium)
+    private let heroSpinner = LoaderCircularView(size: .small)
 
     private var imageTask: Task<Void, Never>?
     private var didRequestImage = false
@@ -34,11 +34,19 @@ final class NewsDetailViewController: UIViewController {
         imageTask?.cancel()
     }
 
+    // MARK: - Жизненный цикл
+
+    /// Создаём иерархию программно — без storyboard/xib.
+    override func loadView() {
+        let root = UIView()
+        root.backgroundColor = .adBackground
+        view = root
+        setup()
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
         navigationItem.largeTitleDisplayMode = .never
-        setup()
     }
 
     override func viewDidLayoutSubviews() {
@@ -93,13 +101,13 @@ final class NewsDetailViewController: UIViewController {
 
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.backgroundColor = .secondarySystemBackground
+        container.backgroundColor = .adSurface
         container.layer.cornerRadius = 16
         container.layer.cornerCurve = .continuous
         container.clipsToBounds = true
 
         heroImageView.translatesAutoresizingMaskIntoConstraints = false
-        heroImageView.contentMode = .scaleAspectFill
+        heroImageView.contentMode = .scaleToFill
         heroImageView.clipsToBounds = true
         container.addSubview(heroImageView)
 
@@ -131,7 +139,7 @@ final class NewsDetailViewController: UIViewController {
             let metaLabel = UILabel()
             metaLabel.text = metaText.uppercased()
             metaLabel.font = .systemFont(ofSize: 12, weight: .semibold)
-            metaLabel.textColor = .systemBlue
+            metaLabel.textColor = .adBrand
             metaLabel.numberOfLines = 0
             contentStack.addArrangedSubview(metaLabel)
         }
@@ -140,6 +148,7 @@ final class NewsDetailViewController: UIViewController {
         titleLabel.text = item.title
         titleLabel.font = .preferredFont(forTextStyle: .largeTitle)
         titleLabel.adjustsFontForContentSizeCategory = true
+        titleLabel.textColor = .adPrimaryText
         titleLabel.numberOfLines = 0
         contentStack.addArrangedSubview(titleLabel)
 
@@ -148,7 +157,7 @@ final class NewsDetailViewController: UIViewController {
             bodyLabel.text = item.description
             bodyLabel.font = .preferredFont(forTextStyle: .body)
             bodyLabel.adjustsFontForContentSizeCategory = true
-            bodyLabel.textColor = .label
+            bodyLabel.textColor = .adPrimaryText
             bodyLabel.numberOfLines = 0
             contentStack.addArrangedSubview(bodyLabel)
         }
@@ -162,6 +171,8 @@ final class NewsDetailViewController: UIViewController {
         config.imagePadding = 8
         config.cornerStyle = .large
         config.buttonSize = .large
+        config.baseBackgroundColor = .adBrand
+        config.baseForegroundColor = .white
 
         let button = UIButton(configuration: config)
         button.addTarget(self, action: #selector(openFullArticle), for: .touchUpInside)

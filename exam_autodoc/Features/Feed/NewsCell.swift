@@ -2,8 +2,8 @@
 //  NewsCell.swift
 //  exam_autodoc
 //
-//  Ячейка ленты: изображение + заголовок, чип категории и дата публикации.
-//  Картинки грузятся лениво и отменяются при reuse — для плавного скролла.
+//  Ячейка ленты: изображение + динамический текстовый блок
+//  (заголовок, описание, дата). Высота растёт от контента.
 //
 
 import UIKit
@@ -15,9 +15,10 @@ final class NewsCell: UICollectionViewCell {
     private let imageView = UIImageView()
     private let gradientLayer = CAGradientLayer()
     private let titleLabel = UILabel()
+    private let descriptionLabel = UILabel()
     private let categoryLabel = PaddingLabel()
     private let dateLabel = UILabel()
-    private let spinner = UIActivityIndicatorView(style: .medium)
+    private let spinner = LoaderCircularView(size: .small)
 
     private var imageURL: URL?
     private var requestedKey: String?
@@ -36,6 +37,8 @@ final class NewsCell: UICollectionViewCell {
 
     func configure(with item: NewsItem) {
         titleLabel.text = item.title
+        descriptionLabel.text = item.description
+        descriptionLabel.isHidden = item.description.isEmpty
         categoryLabel.text = item.categoryType
         categoryLabel.isHidden = item.categoryType.isEmpty
         dateLabel.text = item.publishedDate.map(DateDisplay.string(from:))
@@ -70,12 +73,12 @@ final class NewsCell: UICollectionViewCell {
 
     private func resetImage() {
         imageView.image = nil
-        imageView.backgroundColor = .secondarySystemBackground
+        imageView.backgroundColor = .adSurface
         if imageURL != nil {
             spinner.startAnimating()
         } else {
             spinner.stopAnimating()
-            showPlaceholderGlyph()
+            showPlaceholder()
         }
     }
 
@@ -103,36 +106,39 @@ final class NewsCell: UICollectionViewCell {
             } catch {
                 if Task.isCancelled || self.imageURL != url { return }
                 self.spinner.stopAnimating()
-                self.showPlaceholderGlyph()
+                self.showPlaceholder()
             }
         }
     }
 
+    /// Плейсхолдер для новостей без изображения (или при ошибке загрузки).
+    private func showPlaceholder() {
+        gradientLayer.isHidden = true
+        imageView.contentMode = .scaleAspectFill
+        imageView.backgroundColor = .adPlaceholderBackground
+        imageView.image = UIImage(named: "logo")
+    }
+
     private func apply(_ image: UIImage) {
         spinner.stopAnimating()
-        imageView.contentMode = .scaleAspectFill
+        gradientLayer.isHidden = false
+        imageView.backgroundColor = .adSurface
+        imageView.contentMode = .scaleToFill
         UIView.transition(with: imageView, duration: 0.2, options: .transitionCrossDissolve) {
             self.imageView.image = image
         }
     }
 
-    private func showPlaceholderGlyph() {
-        let config = UIImage.SymbolConfiguration(pointSize: 28, weight: .regular)
-        imageView.contentMode = .center
-        imageView.image = UIImage(systemName: "photo", withConfiguration: config)?
-            .withTintColor(.tertiaryLabel, renderingMode: .alwaysOriginal)
-    }
-
     // MARK: - Настройка
 
     private func setup() {
-        contentView.backgroundColor = .secondarySystemGroupedBackground
+        contentView.backgroundColor = .adSurface
         contentView.layer.cornerRadius = 16
         contentView.layer.cornerCurve = .continuous
         contentView.clipsToBounds = true
 
         imageView.clipsToBounds = true
-        imageView.contentMode = .scaleAspectFill
+        imageView.contentMode = .scaleToFill
         imageView.translatesAutoresizingMaskIntoConstraints = false
 
         gradientLayer.colors = [
@@ -143,12 +149,11 @@ final class NewsCell: UICollectionViewCell {
         imageView.layer.addSublayer(gradientLayer)
 
         spinner.translatesAutoresizingMaskIntoConstraints = false
-        spinner.hidesWhenStopped = true
 
         categoryLabel.translatesAutoresizingMaskIntoConstraints = false
         categoryLabel.font = .systemFont(ofSize: 11, weight: .semibold)
         categoryLabel.textColor = .white
-        categoryLabel.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.9)
+        categoryLabel.backgroundColor = UIColor.adBrand.withAlphaComponent(0.92)
         categoryLabel.layer.cornerRadius = 8
         categoryLabel.layer.cornerCurve = .continuous
         categoryLabel.clipsToBounds = true
@@ -158,23 +163,38 @@ final class NewsCell: UICollectionViewCell {
         titleLabel.font = .preferredFont(forTextStyle: .headline)
         titleLabel.adjustsFontForContentSizeCategory = true
         titleLabel.numberOfLines = 3
-        titleLabel.textColor = .label
+        titleLabel.lineBreakMode = .byWordWrapping
+        titleLabel.textColor = .adPrimaryText
+        titleLabel.setContentCompressionResistancePriority(.required, for: .vertical)
+
+        descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
+        descriptionLabel.font = .preferredFont(forTextStyle: .subheadline)
+        descriptionLabel.adjustsFontForContentSizeCategory = true
+        descriptionLabel.numberOfLines = 2
+        descriptionLabel.lineBreakMode = .byWordWrapping
+        descriptionLabel.textColor = .adSecondaryText
+        descriptionLabel.setContentCompressionResistancePriority(.required, for: .vertical)
 
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
         dateLabel.font = .preferredFont(forTextStyle: .caption1)
         dateLabel.adjustsFontForContentSizeCategory = true
-        dateLabel.textColor = .secondaryLabel
+        dateLabel.textColor = .adTertiaryText
+        dateLabel.setContentCompressionResistancePriority(.required, for: .vertical)
 
-        let textStack = UIStackView(arrangedSubviews: [titleLabel, dateLabel])
+        // Нижний блок полностью динамический: высота ячейки растёт от контента.
+        let textStack = UIStackView(arrangedSubviews: [titleLabel, descriptionLabel, dateLabel])
         textStack.axis = .vertical
-        textStack.spacing = 4
+        textStack.spacing = 6
+        textStack.alignment = .fill
         textStack.translatesAutoresizingMaskIntoConstraints = false
+        textStack.setCustomSpacing(16, after: descriptionLabel)
 
         contentView.addSubview(imageView)
         contentView.addSubview(spinner)
         contentView.addSubview(categoryLabel)
         contentView.addSubview(textStack)
 
+        let padding: CGFloat = 16
         NSLayoutConstraint.activate([
             imageView.topAnchor.constraint(equalTo: contentView.topAnchor),
             imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
@@ -188,10 +208,10 @@ final class NewsCell: UICollectionViewCell {
             categoryLabel.bottomAnchor.constraint(equalTo: imageView.bottomAnchor, constant: -10),
             categoryLabel.trailingAnchor.constraint(lessThanOrEqualTo: imageView.trailingAnchor, constant: -10),
 
-            textStack.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 12),
-            textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
-            textStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
-            textStack.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -12)
+            textStack.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 14),
+            textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
+            textStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
+            textStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -padding)
         ])
     }
 }

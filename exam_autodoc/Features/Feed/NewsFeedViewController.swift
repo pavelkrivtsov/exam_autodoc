@@ -24,7 +24,7 @@ final class NewsFeedViewController: UIViewController {
     private var dataSource: UICollectionViewDiffableDataSource<Section, NewsItem>!
     private weak var footerView: FeedFooterView?
 
-    private lazy var refreshControl = UIRefreshControl()
+    private lazy var refreshControl = BrandRefreshControl()
     private let stateView = FeedStateView()
 
     init(viewModel: NewsFeedViewModel = NewsFeedViewModel()) {
@@ -38,25 +38,31 @@ final class NewsFeedViewController: UIViewController {
 
     // MARK: - Жизненный цикл
 
+    /// Создаём иерархию программно — без storyboard/xib.
+    override func loadView() {
+        let root = UIView()
+        root.backgroundColor = .adBackground
+        view = root
+
+        configureCollectionView()
+        configureStateView()
+        configureDataSource()
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Новости"
         navigationController?.navigationBar.prefersLargeTitles = true
-        view.backgroundColor = .systemGroupedBackground
-
-        configureCollectionView()
-        configureDataSource()
-        configureStateView()
+        navigationController?.navigationBar.tintColor = .adBrand
         bind()
-
         viewModel.onViewDidLoad()
     }
 
     // MARK: - Настройка
 
     private func configureCollectionView() {
-        collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: makeLayout())
-        collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        collectionView = UICollectionView(frame: .zero, collectionViewLayout: makeLayout())
+        collectionView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.backgroundColor = .clear
         collectionView.alwaysBounceVertical = true
         collectionView.delegate = self
@@ -70,6 +76,13 @@ final class NewsFeedViewController: UIViewController {
 
         refreshControl.addTarget(self, action: #selector(handleRefresh), for: .valueChanged)
         collectionView.refreshControl = refreshControl
+
+        NSLayoutConstraint.activate([
+            collectionView.topAnchor.constraint(equalTo: view.topAnchor),
+            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
     }
 
     private func makeLayout() -> UICollectionViewLayout {
@@ -82,18 +95,18 @@ final class NewsFeedViewController: UIViewController {
             let spacing: CGFloat = 16
 
             let itemSize = NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1.0),
-                heightDimension: .fractionalHeight(1.0)
+                widthDimension: .fractionalWidth(1.0 / CGFloat(columns)),
+                heightDimension: .estimated(360)
             )
             let item = NSCollectionLayoutItem(layoutSize: itemSize)
 
             let groupSize = NSCollectionLayoutSize(
                 widthDimension: .fractionalWidth(1.0),
-                heightDimension: .estimated(320)
+                heightDimension: .estimated(360)
             )
             let group = NSCollectionLayoutGroup.horizontal(
                 layoutSize: groupSize,
-                repeatingSubitem: item,
+                subitem: item,
                 count: columns
             )
             group.interItemSpacing = .fixed(spacing)

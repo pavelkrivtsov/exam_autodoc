@@ -10,12 +10,11 @@ import UIKit
 final class FeedFooterView: UICollectionReusableView {
     static let reuseID = "FeedFooterView"
 
-    private let spinner = UIActivityIndicatorView(style: .medium)
+    private let spinner = LoaderCircularView(size: .small)
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         spinner.translatesAutoresizingMaskIntoConstraints = false
-        spinner.hidesWhenStopped = true
         addSubview(spinner)
         NSLayoutConstraint.activate([
             spinner.centerXAnchor.constraint(equalTo: centerXAnchor),
