@@ -2,8 +2,8 @@
 //  NewsCell.swift
 //  exam_autodoc
 //
-//  Ячейка ленты: изображение + динамический текстовый блок
-//  (заголовок, описание, дата). Высота растёт от контента.
+//  Ячейка ленты: изображение и заголовок (дата — внизу текстового блока).
+//  Описание показывается только на экране деталей.
 //
 
 import UIKit
@@ -15,7 +15,6 @@ final class NewsCell: UICollectionViewCell {
     private let imageView = UIImageView()
     private let gradientLayer = CAGradientLayer()
     private let titleLabel = UILabel()
-    private let descriptionLabel = UILabel()
     private let categoryLabel = PaddingLabel()
     private let dateLabel = UILabel()
     private let spinner = LoaderCircularView(size: .small)
@@ -37,8 +36,6 @@ final class NewsCell: UICollectionViewCell {
 
     func configure(with item: NewsItem) {
         titleLabel.text = item.title
-        descriptionLabel.text = item.description
-        descriptionLabel.isHidden = item.description.isEmpty
         categoryLabel.text = item.categoryType
         categoryLabel.isHidden = item.categoryType.isEmpty
         dateLabel.text = item.publishedDate.map(DateDisplay.string(from:))
@@ -167,27 +164,18 @@ final class NewsCell: UICollectionViewCell {
         titleLabel.textColor = .adPrimaryText
         titleLabel.setContentCompressionResistancePriority(.required, for: .vertical)
 
-        descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
-        descriptionLabel.font = .preferredFont(forTextStyle: .subheadline)
-        descriptionLabel.adjustsFontForContentSizeCategory = true
-        descriptionLabel.numberOfLines = 2
-        descriptionLabel.lineBreakMode = .byWordWrapping
-        descriptionLabel.textColor = .adSecondaryText
-        descriptionLabel.setContentCompressionResistancePriority(.required, for: .vertical)
-
         dateLabel.translatesAutoresizingMaskIntoConstraints = false
         dateLabel.font = .preferredFont(forTextStyle: .caption1)
         dateLabel.adjustsFontForContentSizeCategory = true
         dateLabel.textColor = .adTertiaryText
         dateLabel.setContentCompressionResistancePriority(.required, for: .vertical)
 
-        // Нижний блок полностью динамический: высота ячейки растёт от контента.
-        let textStack = UIStackView(arrangedSubviews: [titleLabel, descriptionLabel, dateLabel])
+        // Нижний блок: заголовок + дата. Описание — только на экране деталей.
+        let textStack = UIStackView(arrangedSubviews: [titleLabel, dateLabel])
         textStack.axis = .vertical
-        textStack.spacing = 6
+        textStack.spacing = 16
         textStack.alignment = .fill
         textStack.translatesAutoresizingMaskIntoConstraints = false
-        textStack.setCustomSpacing(16, after: descriptionLabel)
 
         contentView.addSubview(imageView)
         contentView.addSubview(spinner)

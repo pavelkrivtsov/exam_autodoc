@@ -34,7 +34,7 @@ final class NewsFeedViewModel {
     private var seenIDs = Set<Int>()
     private var loadTask: Task<Void, Never>?
 
-    nonisolated init(service: any NewsServing = NewsService(), pageSize: Int = 15) {
+    nonisolated init(service: any NewsServing = NewsService(), pageSize: Int = 9) {
         self.service = service
         self.pageSize = pageSize
     }

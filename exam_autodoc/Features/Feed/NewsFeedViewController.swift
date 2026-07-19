@@ -106,7 +106,7 @@ final class NewsFeedViewController: UIViewController {
             )
             let group = NSCollectionLayoutGroup.horizontal(
                 layoutSize: groupSize,
-                subitem: item,
+                repeatingSubitem: item,
                 count: columns
             )
             group.interItemSpacing = .fixed(spacing)
