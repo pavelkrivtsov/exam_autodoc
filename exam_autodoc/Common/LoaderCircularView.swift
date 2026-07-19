@@ -33,8 +33,11 @@ private enum Constants {
 }
 
 final class LoaderCircularView: UIView {
+    /// Размер лоадера под место в UI.
     enum Size {
+        /// Компактный - ячейки, футер, refresh.
         case small
+        /// Крупнее - заглушка ленты.
         case medium
 
         var side: CGFloat {

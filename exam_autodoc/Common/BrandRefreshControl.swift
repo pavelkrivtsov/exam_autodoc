@@ -2,7 +2,8 @@
 //  BrandRefreshControl.swift
 //  exam_autodoc
 //
-//  Pull-to-refresh с круговым лоадером бренда вместо системного спиннера.
+//  Pull-to-refresh: лоадер бренда во время запроса, баннер при ошибке,
+//  без лишнего UI при успехе.
 //
 
 import UIKit
@@ -10,6 +11,7 @@ import UIKit
 final class BrandRefreshControl: UIRefreshControl {
 
     private let loader = LoaderCircularView(size: .medium)
+    private let toast = ToastBannerView()
 
     override init() {
         super.init()
@@ -33,8 +35,18 @@ final class BrandRefreshControl: UIRefreshControl {
     }
 
     override func endRefreshing() {
+        finish(failureMessage: nil)
+    }
+
+    /// Завершает refresh: при `failureMessage` показывает баннер, иначе только прячет лоадер.
+    func finish(failureMessage: String? = nil) {
         loader.stopAnimating()
-        super.endRefreshing()
+        if isRefreshing {
+            super.endRefreshing()
+        }
+        if let failureMessage {
+            presentToast(failureMessage)
+        }
     }
 
     override func layoutSubviews() {
@@ -42,5 +54,11 @@ final class BrandRefreshControl: UIRefreshControl {
         if isRefreshing {
             loader.startAnimating()
         }
+    }
+
+    /// Баннер вешаем на контейнер экрана (superview collection view), не на сам refresh.
+    private func presentToast(_ message: String) {
+        guard let host = superview?.superview else { return }
+        toast.show(message, in: host, below: host.safeAreaLayoutGuide.topAnchor)
     }
 }

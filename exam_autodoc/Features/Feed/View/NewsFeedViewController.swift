@@ -9,7 +9,9 @@
 import UIKit
 import Combine
 
+/// Секции compositional layout / DiffableDataSource ленты.
 private nonisolated enum FeedSection: Hashable, Sendable {
+    /// Единственная секция со всеми новостями - проще снапшоты и футер.
     case main
 }
 
@@ -22,7 +24,7 @@ private enum Constants {
         static let spacing: CGFloat = 16
         static let columnWidth: CGFloat = 300
         static let estimatedItemHeight: CGFloat = 360
-        static let footerHeight: CGFloat = 44
+        static let footerHeight: CGFloat = 56
         static let stateHorizontalInset: CGFloat = 32
     }
 }
@@ -65,6 +67,7 @@ final class NewsFeedViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = Constants.Text.title
+        navigationItem.largeTitleDisplayMode = .always
         navigationController?.navigationBar.prefersLargeTitles = true
         navigationController?.navigationBar.tintColor = .adBrand
         bind()
@@ -97,7 +100,8 @@ final class NewsFeedViewController: UIViewController {
                 return nil
             }
             self?.footerView = footer
-            footer.setLoading(self?.viewModel.phase == .loadingNext)
+            footer.onRetry = { [weak self] in self?.viewModel.retry() }
+            footer.apply(Self.footerMode(for: self?.viewModel.phase ?? .idle))
             return footer
         }
 
@@ -188,15 +192,16 @@ private extension NewsFeedViewController {
         stateView.isHidden = true
         stateView.onRetry = { [weak self] in self?.viewModel.retry() }
         view.addSubview(stateView)
+
         NSLayoutConstraint.activate([
-            stateView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            stateView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            stateView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            stateView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             stateView.leadingAnchor.constraint(
-                greaterThanOrEqualTo: view.leadingAnchor,
+                equalTo: view.leadingAnchor,
                 constant: Constants.Layout.stateHorizontalInset
             ),
             stateView.trailingAnchor.constraint(
-                lessThanOrEqualTo: view.trailingAnchor,
+                equalTo: view.trailingAnchor,
                 constant: -Constants.Layout.stateHorizontalInset
             )
         ])
@@ -228,28 +233,68 @@ private extension NewsFeedViewController {
     }
 
     func render(_ phase: NewsFeedViewModel.Phase) {
-        footerView?.setLoading(phase == .loadingNext)
+        footerView?.apply(Self.footerMode(for: phase))
 
+        let stubState: FeedStateView.State?
         switch phase {
         case .loadingFirst where viewModel.items.isEmpty:
-            stateView.show(.loading)
+            stubState = .loading
+
         case .error(let message) where viewModel.items.isEmpty:
-            stateView.show(.error(message))
+            stubState = .error(message)
+
         case .empty:
-            stateView.show(.empty)
+            stubState = .empty
+
         default:
-            stateView.hide()
+            stubState = nil
         }
 
-        if phase != .loadingFirst, refreshControl.isRefreshing {
-            refreshControl.endRefreshing()
+        if let stubState {
+            // Оверлей поверх ленты: large title не трогаем - иначе UIKit не вернёт его после .never.
+            showStub(stubState)
+        } else {
+            showFeed()
+        }
+    }
+
+    /// Заглушка поверх пустой ленты: без скролла и refresh, large title остаётся.
+    func showStub(_ state: FeedStateView.State) {
+        collectionView.isHidden = false
+        collectionView.isScrollEnabled = false
+        collectionView.refreshControl = nil
+        stateView.show(state)
+    }
+
+    /// Обычная лента со скроллом и pull-to-refresh.
+    func showFeed() {
+        stateView.hide()
+        collectionView.isHidden = false
+        collectionView.isScrollEnabled = true
+        collectionView.refreshControl = refreshControl
+    }
+
+    /// Режим футера по фазе ViewModel - спиннер, retry или пусто.
+    static func footerMode(for phase: NewsFeedViewModel.Phase) -> FeedFooterView.Mode {
+        switch phase {
+        case .loadingNext:
+            return .loading
+
+        case .pagingError:
+            return .retry
+
+        default:
+            return .idle
         }
     }
 
     // MARK: - Действия
 
     @objc func handleRefresh() {
-        Task { await viewModel.refresh() }
+        Task {
+            let failureMessage = await viewModel.refresh()
+            refreshControl.finish(failureMessage: failureMessage)
+        }
     }
 }
 

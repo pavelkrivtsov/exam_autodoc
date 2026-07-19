@@ -27,9 +27,12 @@ nonisolated struct NewsItem: Decodable, Sendable, Identifiable, Hashable {
     let imageURL: URL?
     let categoryType: String
 
+    /// Ключи JSON API; часть имён отличается от свойств модели.
     private enum CodingKeys: String, CodingKey {
         case id, title, description, publishedDate, categoryType
+        /// В API: `fullUrl`.
         case fullURL = "fullUrl"
+        /// В API: `titleImageUrl`.
         case imageURL = "titleImageUrl"
     }
 

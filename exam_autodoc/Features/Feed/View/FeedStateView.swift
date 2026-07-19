@@ -25,9 +25,13 @@ private enum Constants {
 }
 
 final class FeedStateView: UIView {
+    /// Визуальное состояние заглушки поверх пустой ленты.
     enum State {
+        /// Первичная загрузка - только спиннер.
         case loading
+        /// API вернул пусто - иконка, текст и «Повторить».
         case empty
+        /// Ошибка первой загрузки - иконка, текст ошибки и «Повторить».
         case error(String)
     }
 
@@ -63,7 +67,7 @@ final class FeedStateView: UIView {
             imageView.image = UIImage(systemName: Constants.Icon.empty)
             messageLabel.isHidden = false
             messageLabel.text = Constants.Text.empty
-            retryButton.isHidden = true
+            retryButton.isHidden = false
 
         case .error(let message):
             spinner.stopAnimating()
@@ -81,6 +85,8 @@ final class FeedStateView: UIView {
     }
 
     private func setup() {
+        backgroundColor = .adBackground
+
         imageView.tintColor = .tertiaryLabel
         imageView.contentMode = .scaleToFill
         imageView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(
@@ -107,10 +113,10 @@ final class FeedStateView: UIView {
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: topAnchor),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor)
+            stack.centerXAnchor.constraint(equalTo: centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            stack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor)
         ])
     }
 
