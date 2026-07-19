@@ -10,7 +10,7 @@ import UIKit
 
 private enum Constants {
     enum Image {
-        static let placeholderName = "logo"
+        static let placeholder = "placeholder"
         static let aspectRatio: CGFloat = 0.62
         static let minWidth: CGFloat = 1
         static let fallbackScreenScale: CGFloat = 2
@@ -139,7 +139,7 @@ final class NewsCell: UICollectionViewCell {
         gradientLayer.isHidden = true
         imageView.contentMode = .scaleAspectFill
         imageView.backgroundColor = .adPlaceholderBackground
-        imageView.image = UIImage(named: Constants.Image.placeholderName)
+        imageView.image = UIImage(named: Constants.Image.placeholder)
     }
 
     private func apply(_ image: UIImage) {
