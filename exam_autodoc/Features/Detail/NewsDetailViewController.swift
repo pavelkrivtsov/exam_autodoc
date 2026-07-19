@@ -13,6 +13,8 @@ private enum Constants {
     enum Text {
         static let readMore = "Читать полностью"
         static let metaSeparator = "  ·  "
+        /// Ссылка не http(s) или страница не открылась - вместо краша Safari.
+        static let brokenLink = "Не удалось открыть ссылку"
     }
 
     enum Icon {
@@ -43,6 +45,7 @@ private enum Constants {
 final class NewsDetailViewController: UIViewController {
 
     private let item: NewsItem
+    private let toast = ToastBannerView()
 
     private let scrollView = UIScrollView()
     private let contentStack = UIStackView()
@@ -65,7 +68,8 @@ final class NewsDetailViewController: UIViewController {
         imageTask?.cancel()
     }
 
-    //     MARK: - Lifecycle
+    // MARK: - Lifecycle
+
     override func loadView() {
         let root = UIView()
         root.backgroundColor = .adBackground
@@ -206,9 +210,9 @@ private extension NewsDetailViewController {
         }
     }
 
-    /// Добавляет кнопку «Читать полностью», если есть fullURL - открытие статьи во встроенном Safari.
+    /// Добавляет кнопку «Читать полностью», если fullURL подходит для Safari.
     func addReadMoreButtonIfNeeded() {
-        guard item.fullURL != nil else { return }
+        guard let url = item.fullURL, url.isSafariCompatible else { return }
         let config = UIButton.Configuration.adBrandProminent(
             title: Constants.Text.readMore,
             size: .large,
@@ -252,10 +256,49 @@ private extension NewsDetailViewController {
 
     // MARK: - Действия
 
-    /// Открывает fullURL во встроенном Safari - без ухода в сторонний браузер.
+    /// Открывает fullURL во встроенном Safari - битую ссылку ловим до краша и через delegate.
     @objc func openFullArticle() {
-        guard let url = item.fullURL else { return }
+        guard let url = item.fullURL, url.isSafariCompatible else {
+            showBrokenLinkToast()
+            return
+        }
         let safari = SFSafariViewController(url: url)
+        safari.delegate = self
         present(safari, animated: true)
+    }
+
+    /// Баннер под safe area - мягкий фидбек без модалки.
+    func showBrokenLinkToast() {
+        toast.show(
+            Constants.Text.brokenLink,
+            in: view,
+            below: view.safeAreaLayoutGuide.topAnchor
+        )
+    }
+}
+
+// MARK: - SFSafariViewControllerDelegate
+
+extension NewsDetailViewController: SFSafariViewControllerDelegate {
+    /// Если начальная загрузка страницы упала - закрываем Safari и сообщаем на деталях.
+    func safariViewController(
+        _ controller: SFSafariViewController,
+        didCompleteInitialLoad didLoadSuccessfully: Bool
+    ) {
+        guard !didLoadSuccessfully else { return }
+        controller.dismiss(animated: true) { [weak self] in
+            self?.showBrokenLinkToast()
+        }
+    }
+}
+
+private extension URL {
+    /// SFSafariViewController принимает только http/https с непустым host.
+    var isSafariCompatible: Bool {
+        guard let scheme = scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              let host, !host.isEmpty
+        else { return false }
+        return true
     }
 }
