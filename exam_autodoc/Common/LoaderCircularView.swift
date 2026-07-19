@@ -32,28 +32,29 @@ private enum Constants {
     }
 }
 
-final class LoaderCircularView: UIView {
-    /// Размер лоадера под место в UI.
-    enum Size {
-        /// Компактный - ячейки, футер, refresh.
-        case small
-        /// Крупнее - заглушка ленты.
-        case medium
+/// Размер лоадера под место в UI.
+enum LoaderCircularSize {
+    /// Компактный - ячейки, футер, refresh.
+    case small
+    /// Крупнее - заглушка ленты.
+    case medium
 
-        var side: CGFloat {
-            switch self {
-            case .small: return Constants.SizeValue.smallSide
-            case .medium: return Constants.SizeValue.mediumSide
-            }
-        }
-
-        var lineWidth: CGFloat {
-            switch self {
-            case .small: return Constants.SizeValue.smallLineWidth
-            case .medium: return Constants.SizeValue.mediumLineWidth
-            }
+    var side: CGFloat {
+        switch self {
+        case .small: return Constants.SizeValue.smallSide
+        case .medium: return Constants.SizeValue.mediumSide
         }
     }
+
+    var lineWidth: CGFloat {
+        switch self {
+        case .small: return Constants.SizeValue.smallLineWidth
+        case .medium: return Constants.SizeValue.mediumLineWidth
+        }
+    }
+}
+
+final class LoaderCircularView: UIView {
 
     /// Доля дуги (0…1), как `progress` в SwiftUI-версии.
     var progress: CGFloat = Constants.Animation.defaultProgress {
@@ -77,12 +78,12 @@ final class LoaderCircularView: UIView {
     /// Как у `UIActivityIndicatorView`: скрывать, когда анимация остановлена.
     var hidesWhenStopped = true
 
-    private let size: Size
+    private let size: LoaderCircularSize
     private let gradientLayer = CAGradientLayer()
     private let shapeLayer = CAShapeLayer()
     private var isAnimating = false
 
-    init(size: Size = .small, color: UIColor = .adBrand) {
+    init(size: LoaderCircularSize = .small, color: UIColor = .adBrand) {
         self.size = size
         self.color = color
         super.init(frame: CGRect(origin: .zero, size: CGSize(width: size.side, height: size.side)))
@@ -138,10 +139,12 @@ final class LoaderCircularView: UIView {
             isHidden = true
         }
     }
+}
 
-    // MARK: - Слои
+// MARK: - Слои
 
-    private func setupLayers() {
+private extension LoaderCircularView {
+    func setupLayers() {
         gradientLayer.type = .conic
         gradientLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
         gradientLayer.endPoint = CGPoint(x: 0.5, y: 0)
@@ -157,7 +160,7 @@ final class LoaderCircularView: UIView {
         layer.addSublayer(gradientLayer)
     }
 
-    private func updateGradientColors() {
+    func updateGradientColors() {
         // Нельзя использовать `.clear` (0,0,0,0) — в коническом градиенте
         // RGB интерполируется через чёрный и даёт тёмные участки.
         // Берём тот же hue с нулевой альфой.
@@ -170,14 +173,14 @@ final class LoaderCircularView: UIView {
         gradientLayer.locations = Constants.Gradient.locations
     }
 
-    private func makePath() -> UIBezierPath {
+    func makePath() -> UIBezierPath {
         let inset = size.lineWidth / 2
         return UIBezierPath(
             ovalIn: bounds.insetBy(dx: inset, dy: inset)
         )
     }
 
-    private func addRotationAnimation() {
+    func addRotationAnimation() {
         layer.removeAnimation(forKey: Constants.Animation.key)
         let animation = CABasicAnimation(keyPath: Constants.Animation.keyPath)
         animation.fromValue = 0

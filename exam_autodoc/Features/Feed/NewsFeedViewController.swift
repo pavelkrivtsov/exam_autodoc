@@ -9,12 +9,6 @@
 import UIKit
 import Combine
 
-/// Секции compositional layout / DiffableDataSource ленты.
-private nonisolated enum FeedSection: Hashable, Sendable {
-    /// Единственная секция со всеми новостями - проще снапшоты и футер.
-    case main
-}
-
 private enum Constants {
     enum Text {
         static let title = "Новости"
@@ -31,7 +25,11 @@ private enum Constants {
 
 final class NewsFeedViewController: UIViewController {
 
-    private typealias Section = FeedSection
+    /// Секции DiffableDataSource - только для этого экрана.
+    nonisolated private enum Section: Hashable, Sendable {
+        /// Единственная секция со всеми новостями - проще снапшоты и футер.
+        case main
+    }
 
     private let viewModel: NewsFeedViewModel
     private var cancellables = Set<AnyCancellable>()
@@ -43,6 +41,7 @@ final class NewsFeedViewController: UIViewController {
     private lazy var refreshControl = BrandRefreshControl()
     private let stateView = FeedStateView()
 
+    /// Собирает экран с переданным или дефолтным ViewModel.
     init(viewModel: NewsFeedViewModel = NewsFeedViewModel()) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
@@ -54,6 +53,7 @@ final class NewsFeedViewController: UIViewController {
 
     // MARK: - Lifecycle
 
+    /// Собирает корень экрана без storyboard - сразу ставим collection и заглушку.
     override func loadView() {
         let root = UIView()
         root.backgroundColor = .adBackground
@@ -64,6 +64,7 @@ final class NewsFeedViewController: UIViewController {
         _ = dataSource
     }
 
+    /// Настраивает navigation и запускает первую загрузку - экран готов к данным.
     override func viewDidLoad() {
         super.viewDidLoad()
         title = Constants.Text.title
@@ -74,6 +75,7 @@ final class NewsFeedViewController: UIViewController {
         viewModel.onViewDidLoad()
     }
 
+    /// Создаёт DiffableDataSource для ячеек и футера - в классе из‑за приватного `Section` в сигнатуре.
     private func makeDataSource() -> UICollectionViewDiffableDataSource<Section, NewsItem> {
         let dataSource = UICollectionViewDiffableDataSource<Section, NewsItem>(
             collectionView: collectionView
@@ -112,6 +114,7 @@ final class NewsFeedViewController: UIViewController {
 // MARK: - Настройка
 
 private extension NewsFeedViewController {
+    /// Собирает collection view с layout и регистрацией ячеек - единая фабрика UI ленты.
     func makeCollectionView() -> UICollectionView {
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: makeLayout())
         collectionView.translatesAutoresizingMaskIntoConstraints = false
@@ -127,6 +130,7 @@ private extension NewsFeedViewController {
         return collectionView
     }
 
+    /// Встраивает collection на весь экран и подключает refresh - лента занимает root view.
     func configureCollectionView() {
         view.addSubview(collectionView)
 
@@ -141,6 +145,7 @@ private extension NewsFeedViewController {
         ])
     }
 
+    /// Compositional layout с адаптивным числом колонок - удобно на iPhone и iPad.
     func makeLayout() -> UICollectionViewLayout {
         let configuration = UICollectionViewCompositionalLayoutConfiguration()
         configuration.interSectionSpacing = Constants.Layout.spacing
@@ -187,6 +192,7 @@ private extension NewsFeedViewController {
         }, configuration: configuration)
     }
 
+    /// Кладёт оверлей заглушки поверх ленты - loading/empty/error без ломки large title.
     func configureStateView() {
         stateView.translatesAutoresizingMaskIntoConstraints = false
         stateView.isHidden = true
@@ -209,6 +215,7 @@ private extension NewsFeedViewController {
 
     // MARK: - Привязка
 
+    /// Подписывается на items и phase ViewModel - UI обновляется декларативно.
     func bind() {
         viewModel.$items
             .receive(on: DispatchQueue.main)
@@ -225,6 +232,7 @@ private extension NewsFeedViewController {
             .store(in: &cancellables)
     }
 
+    /// Применяет снапшот DiffableDataSource - список на экране совпадает с ViewModel.
     func apply(_ items: [NewsItem], animate: Bool = true) {
         var snapshot = NSDiffableDataSourceSnapshot<Section, NewsItem>()
         snapshot.appendSections([.main])
@@ -232,10 +240,11 @@ private extension NewsFeedViewController {
         dataSource.apply(snapshot, animatingDifferences: animate)
     }
 
-    func render(_ phase: NewsFeedViewModel.Phase) {
+    /// Переводит фазу ViewModel в stub или ленту - единая точка UI-состояний.
+    func render(_ phase: NewsFeedPhase) {
         footerView?.apply(Self.footerMode(for: phase))
 
-        let stubState: FeedStateView.State?
+        let stubState: FeedState?
         switch phase {
         case .loadingFirst where viewModel.items.isEmpty:
             stubState = .loading
@@ -259,7 +268,7 @@ private extension NewsFeedViewController {
     }
 
     /// Заглушка поверх пустой ленты: без скролла и refresh, large title остаётся.
-    func showStub(_ state: FeedStateView.State) {
+    func showStub(_ state: FeedState) {
         collectionView.isHidden = false
         collectionView.isScrollEnabled = false
         collectionView.refreshControl = nil
@@ -275,7 +284,7 @@ private extension NewsFeedViewController {
     }
 
     /// Режим футера по фазе ViewModel - спиннер, retry или пусто.
-    static func footerMode(for phase: NewsFeedViewModel.Phase) -> FeedFooterView.Mode {
+    static func footerMode(for phase: NewsFeedPhase) -> FeedFooterMode {
         switch phase {
         case .loadingNext:
             return .loading
@@ -290,6 +299,7 @@ private extension NewsFeedViewController {
 
     // MARK: - Действия
 
+    /// Запускает pull-to-refresh и завершает control с баннером при ошибке.
     @objc func handleRefresh() {
         Task {
             let failureMessage = await viewModel.refresh()
@@ -301,6 +311,7 @@ private extension NewsFeedViewController {
 // MARK: - UICollectionViewDelegate
 
 extension NewsFeedViewController: UICollectionViewDelegate {
+    /// При показе ячейки просит ViewModel догрузить страницу - пагинация без отдельного скролл-хендлера.
     func collectionView(
         _ collectionView: UICollectionView,
         willDisplay cell: UICollectionViewCell,
@@ -309,6 +320,7 @@ extension NewsFeedViewController: UICollectionViewDelegate {
         viewModel.loadNextPageIfNeeded(currentIndex: indexPath.item)
     }
 
+    /// Открывает экран детали выбранной новости.
     func collectionView(
         _ collectionView: UICollectionView,
         didSelectItemAt indexPath: IndexPath

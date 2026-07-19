@@ -9,16 +9,23 @@
 import Foundation
 
 nonisolated private enum Constants {
+    /// HTTP-заголовки запроса новостей.
     enum Header {
+        /// Имя заголовка Accept - сервер отдаёт JSON, а не HTML.
         static let acceptField = "Accept"
+        /// Значение Accept - явно просим application/json.
         static let acceptJSON = "application/json"
     }
 
+    /// Размеры URLCache для сессии NewsService.
     enum Cache {
+        /// Память URLCache - быстрее повторные ответы без сети.
         static let memoryCapacity = 16 * 1024 * 1024
+        /// Диск URLCache - переживает перезапуск приложения.
         static let diskCapacity = 128 * 1024 * 1024
     }
 
+    /// Диапазон успешных HTTP-кодов - всё остальное считаем ошибкой сервера.
     static let successStatusCodes = 200..<300
 }
 

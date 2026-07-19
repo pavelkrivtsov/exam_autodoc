@@ -67,8 +67,12 @@ final class ToastBannerView: UIView {
         hideWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + Constants.visibleDuration, execute: work)
     }
+}
 
-    private func dismiss() {
+// MARK: - Настройка
+
+private extension ToastBannerView {
+    func dismiss() {
         UIView.animate(withDuration: Constants.appearDuration, animations: {
             self.alpha = 0
             self.transform = CGAffineTransform(translationX: 0, y: -8)
@@ -77,7 +81,7 @@ final class ToastBannerView: UIView {
         })
     }
 
-    private func setup() {
+    func setup() {
         // Лёгкий системный жёлтый — предупреждение без агрессивного акцента.
         backgroundColor = UIColor.systemYellow.withAlphaComponent(0.35)
         layer.cornerRadius = Constants.cornerRadius

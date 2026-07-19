@@ -10,7 +10,6 @@ import UIKit
 private enum Constants {
     enum Text {
         static let empty = "Пока нет новостей"
-        static let retry = "Повторить"
     }
 
     enum Icon {
@@ -24,16 +23,17 @@ private enum Constants {
     }
 }
 
+/// Визуальное состояние заглушки поверх пустой ленты.
+enum FeedState: Equatable {
+    /// Первичная загрузка - только спиннер.
+    case loading
+    /// API вернул пусто - иконка, текст и «Повторить».
+    case empty
+    /// Ошибка первой загрузки - иконка, текст ошибки и «Повторить».
+    case error(String)
+}
+
 final class FeedStateView: UIView {
-    /// Визуальное состояние заглушки поверх пустой ленты.
-    enum State {
-        /// Первичная загрузка - только спиннер.
-        case loading
-        /// API вернул пусто - иконка, текст и «Повторить».
-        case empty
-        /// Ошибка первой загрузки - иконка, текст ошибки и «Повторить».
-        case error(String)
-    }
 
     var onRetry: (() -> Void)?
 
@@ -52,7 +52,7 @@ final class FeedStateView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func show(_ state: State) {
+    func show(_ state: FeedState) {
         isHidden = false
         switch state {
         case .loading:
@@ -83,8 +83,12 @@ final class FeedStateView: UIView {
         isHidden = true
         spinner.stopAnimating()
     }
+}
 
-    private func setup() {
+// MARK: - Настройка
+
+private extension FeedStateView {
+    func setup() {
         backgroundColor = .adBackground
 
         imageView.tintColor = .tertiaryLabel
@@ -100,11 +104,7 @@ final class FeedStateView: UIView {
         messageLabel.textAlignment = .center
         messageLabel.numberOfLines = 0
 
-        var config = UIButton.Configuration.borderedProminent()
-        config.title = Constants.Text.retry
-        config.baseBackgroundColor = .adBrand
-        config.baseForegroundColor = .white
-        retryButton.configuration = config
+        retryButton.configuration = .adBrandProminent(title: AppText.retry)
         retryButton.addTarget(self, action: #selector(retryTapped), for: .touchUpInside)
 
         stack.axis = .vertical
@@ -120,7 +120,7 @@ final class FeedStateView: UIView {
         ])
     }
 
-    @objc private func retryTapped() {
+    @objc func retryTapped() {
         onRetry?()
     }
 }

@@ -7,21 +7,17 @@
 
 import UIKit
 
+/// Режим футера пагинации.
+enum FeedFooterMode: Equatable {
+    /// Догрузка не нужна или уже завершена - футер пустой.
+    case idle
+    /// Идёт запрос следующей страницы - спиннер.
+    case loading
+    /// Догрузка упала - кнопка «Повторить» для той же страницы.
+    case retry
+}
+
 final class FeedFooterView: UICollectionReusableView {
-
-    private enum Constants {
-        static let retryTitle = "Повторить"
-    }
-
-    /// Режим футера пагинации.
-    enum Mode: Equatable {
-        /// Догрузка не нужна или уже завершена - футер пустой.
-        case idle
-        /// Идёт запрос следующей страницы - спиннер.
-        case loading
-        /// Догрузка упала - кнопка «Повторить» для той же страницы.
-        case retry
-    }
 
     static let reuseID = "FeedFooterView"
 
@@ -41,7 +37,7 @@ final class FeedFooterView: UICollectionReusableView {
     }
 
     /// Обновляет футер под фазу догрузки - спиннер, retry или пусто.
-    func apply(_ mode: Mode) {
+    func apply(_ mode: FeedFooterMode) {
         switch mode {
         case .idle:
             spinner.stopAnimating()
@@ -56,17 +52,16 @@ final class FeedFooterView: UICollectionReusableView {
             retryButton.isHidden = false
         }
     }
+}
 
-    private func setup() {
+// MARK: - Настройка
+
+private extension FeedFooterView {
+    func setup() {
         spinner.translatesAutoresizingMaskIntoConstraints = false
         addSubview(spinner)
 
-        var config = UIButton.Configuration.borderedProminent()
-        config.title = Constants.retryTitle
-        config.baseBackgroundColor = .adBrand
-        config.baseForegroundColor = .white
-        config.buttonSize = .small
-        retryButton.configuration = config
+        retryButton.configuration = .adBrandProminent(title: AppText.retry, size: .small)
         retryButton.translatesAutoresizingMaskIntoConstraints = false
         retryButton.addTarget(self, action: #selector(retryTapped), for: .touchUpInside)
         addSubview(retryButton)
@@ -80,7 +75,7 @@ final class FeedFooterView: UICollectionReusableView {
         ])
     }
 
-    @objc private func retryTapped() {
+    @objc func retryTapped() {
         onRetry?()
     }
 }

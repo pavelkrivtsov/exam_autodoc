@@ -209,14 +209,13 @@ private extension NewsDetailViewController {
     /// Добавляет кнопку «Читать полностью», если есть fullURL - открытие статьи во встроенном Safari.
     func addReadMoreButtonIfNeeded() {
         guard item.fullURL != nil else { return }
-        var config = UIButton.Configuration.borderedProminent()
-        config.title = Constants.Text.readMore
-        config.image = UIImage(systemName: Constants.Icon.safari)
-        config.imagePadding = Constants.Layout.buttonImagePadding
-        config.cornerStyle = .large
-        config.buttonSize = .large
-        config.baseBackgroundColor = .adBrand
-        config.baseForegroundColor = .white
+        let config = UIButton.Configuration.adBrandProminent(
+            title: Constants.Text.readMore,
+            size: .large,
+            image: UIImage(systemName: Constants.Icon.safari),
+            imagePadding: Constants.Layout.buttonImagePadding,
+            cornerStyle: .large
+        )
 
         let button = UIButton(configuration: config)
         button.addTarget(self, action: #selector(openFullArticle), for: .touchUpInside)
@@ -236,21 +235,14 @@ private extension NewsDetailViewController {
               size.height > Constants.Layout.minImageDimension else { return }
         didRequestImage = true
 
-        let scale = view.window?.screen.scale ?? traitCollection.displayScale
-        let effectiveScale = scale > 0 ? scale : Constants.Animation.fallbackScreenScale
+        let effectiveScale = view.adEffectiveScreenScale(fallback: Constants.Animation.fallbackScreenScale)
         imageTask = Task { [weak self] in
             guard let self else { return }
             do {
                 let image = try await ImageLoader.shared.image(for: url, targetSize: size, scale: effectiveScale)
                 if Task.isCancelled { return }
                 self.heroSpinner.stopAnimating()
-                UIView.transition(
-                    with: self.heroImageView,
-                    duration: Constants.Animation.imageFadeDuration,
-                    options: .transitionCrossDissolve
-                ) {
-                    self.heroImageView.image = image
-                }
+                self.heroImageView.setImage(image, fadedWith: Constants.Animation.imageFadeDuration)
             } catch {
                 if Task.isCancelled { return }
                 self.heroSpinner.stopAnimating()

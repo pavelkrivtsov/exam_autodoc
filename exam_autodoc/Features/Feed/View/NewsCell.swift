@@ -36,7 +36,6 @@ private enum Constants {
 
 final class NewsCell: UICollectionViewCell {
     static let reuseID = "NewsCell"
-    static let imageAspectRatio = Constants.Image.aspectRatio
 
     private let imageView = UIImageView()
     private let gradientLayer = CAGradientLayer()
@@ -91,10 +90,12 @@ final class NewsCell: UICollectionViewCell {
         requestedKey = nil
         resetImage()
     }
+}
 
-    // MARK: - Загрузка изображения
+// MARK: - Загрузка изображения
 
-    private func resetImage() {
+private extension NewsCell {
+    func resetImage() {
         imageView.image = nil
         imageView.backgroundColor = .adSurface
         if imageURL != nil {
@@ -105,7 +106,7 @@ final class NewsCell: UICollectionViewCell {
         }
     }
 
-    private func loadImageIfNeeded() {
+    func loadImageIfNeeded() {
         guard let url = imageURL else { return }
         // Фрейм imageView устанавливается поздно в self-sizing проходе,
         // поэтому берём размер от ширины contentView — она надёжна.
@@ -113,8 +114,7 @@ final class NewsCell: UICollectionViewCell {
         guard width > Constants.Image.minWidth else { return }
         let size = CGSize(width: width, height: width * Constants.Image.aspectRatio)
 
-        let scale = window?.screen.scale ?? traitCollection.displayScale
-        let effectiveScale = scale > 0 ? scale : Constants.Image.fallbackScreenScale
+        let effectiveScale = adEffectiveScreenScale(fallback: Constants.Image.fallbackScreenScale)
         let key = "\(url.absoluteString)|\(Int(size.width * effectiveScale))"
         guard key != requestedKey else { return }
         requestedKey = key
@@ -135,30 +135,26 @@ final class NewsCell: UICollectionViewCell {
     }
 
     /// Плейсхолдер для новостей без изображения (или при ошибке загрузки).
-    private func showPlaceholder() {
+    func showPlaceholder() {
         gradientLayer.isHidden = true
         imageView.contentMode = .scaleAspectFill
         imageView.backgroundColor = .adPlaceholderBackground
         imageView.image = UIImage(named: Constants.Image.placeholder)
     }
 
-    private func apply(_ image: UIImage) {
+    func apply(_ image: UIImage) {
         spinner.stopAnimating()
         gradientLayer.isHidden = false
         imageView.backgroundColor = .adSurface
         imageView.contentMode = .scaleToFill
-        UIView.transition(
-            with: imageView,
-            duration: Constants.Image.fadeDuration,
-            options: .transitionCrossDissolve
-        ) {
-            self.imageView.image = image
-        }
+        imageView.setImage(image, fadedWith: Constants.Image.fadeDuration)
     }
+}
 
-    // MARK: - Настройка
+// MARK: - Настройка
 
-    private func setup() {
+private extension NewsCell {
+    func setup() {
         contentView.backgroundColor = .adSurface
         contentView.layer.cornerRadius = Constants.Layout.cornerRadius
         contentView.layer.cornerCurve = .continuous

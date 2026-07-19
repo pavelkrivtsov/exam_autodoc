@@ -7,6 +7,22 @@
 
 import Foundation
 
+private enum Constants {
+    enum Text {
+        static let invalidResponse = "Получен некорректный ответ сервера."
+        static let serverUnavailable = "Сервер временно недоступен. Попробуйте позже."
+        static let accessDenied = "Нет доступа к данным."
+        static let notFound = "Данные не найдены."
+        static let loadFailed = "Не удалось загрузить новости."
+        static let decodingFailed = "Не удалось обработать данные новостей."
+        static let networkGeneric = "Проблема с сетью. Проверьте подключение."
+        static let noInternet = "Нет соединения с интернетом."
+        static let timedOut = "Превышено время ожидания."
+        static let hostUnreachable = "Не удалось связаться с сервером."
+        static let connectionLost = "Соединение прервано."
+    }
+}
+
 enum NewsServiceError: LocalizedError {
     /// Ответ не HTTPURLResponse - дальше разбирать нечего.
     case invalidResponse
@@ -20,25 +36,25 @@ enum NewsServiceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidResponse:
-            return "Получен некорректный ответ сервера."
+            return Constants.Text.invalidResponse
 
         case .server(let status):
             switch status {
             case 500...599:
-                return "Сервер временно недоступен. Попробуйте позже."
+                return Constants.Text.serverUnavailable
 
             case 401, 403:
-                return "Нет доступа к данным."
+                return Constants.Text.accessDenied
 
             case 404:
-                return "Данные не найдены."
+                return Constants.Text.notFound
 
             default:
-                return "Не удалось загрузить новости."
+                return Constants.Text.loadFailed
             }
 
         case .decoding:
-            return "Не удалось обработать данные новостей."
+            return Constants.Text.decodingFailed
 
         case .transport(let error):
             return Self.transportMessage(for: error)
@@ -48,23 +64,23 @@ enum NewsServiceError: LocalizedError {
     /// Понятный текст для сетевых сбоев вместо сырого URLError.
     private static func transportMessage(for error: any Error) -> String {
         guard let urlError = error as? URLError else {
-            return "Проблема с сетью. Проверьте подключение."
+            return Constants.Text.networkGeneric
         }
         switch urlError.code {
         case .notConnectedToInternet, .dataNotAllowed:
-            return "Нет соединения с интернетом."
+            return Constants.Text.noInternet
 
         case .timedOut:
-            return "Превышено время ожидания."
+            return Constants.Text.timedOut
 
         case .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
-            return "Не удалось связаться с сервером."
+            return Constants.Text.hostUnreachable
 
         case .networkConnectionLost:
-            return "Соединение прервано."
+            return Constants.Text.connectionLost
 
         default:
-            return "Проблема с сетью. Проверьте подключение."
+            return Constants.Text.networkGeneric
         }
     }
 }
