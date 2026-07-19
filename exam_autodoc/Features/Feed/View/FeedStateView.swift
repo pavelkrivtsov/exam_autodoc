@@ -7,6 +7,23 @@
 
 import UIKit
 
+private enum Constants {
+    enum Text {
+        static let empty = "Пока нет новостей"
+        static let retry = "Повторить"
+    }
+
+    enum Icon {
+        static let empty = "newspaper"
+        static let error = "wifi.exclamationmark"
+        static let pointSize: CGFloat = 48
+    }
+
+    enum Layout {
+        static let stackSpacing: CGFloat = 12
+    }
+}
+
 final class FeedStateView: UIView {
     enum State {
         case loading
@@ -43,15 +60,15 @@ final class FeedStateView: UIView {
         case .empty:
             spinner.stopAnimating()
             imageView.isHidden = false
-            imageView.image = UIImage(systemName: "newspaper")
+            imageView.image = UIImage(systemName: Constants.Icon.empty)
             messageLabel.isHidden = false
-            messageLabel.text = "Пока нет новостей"
+            messageLabel.text = Constants.Text.empty
             retryButton.isHidden = true
 
         case .error(let message):
             spinner.stopAnimating()
             imageView.isHidden = false
-            imageView.image = UIImage(systemName: "wifi.exclamationmark")
+            imageView.image = UIImage(systemName: Constants.Icon.error)
             messageLabel.isHidden = false
             messageLabel.text = message
             retryButton.isHidden = false
@@ -66,7 +83,10 @@ final class FeedStateView: UIView {
     private func setup() {
         imageView.tintColor = .tertiaryLabel
         imageView.contentMode = .scaleToFill
-        imageView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 48, weight: .regular)
+        imageView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(
+            pointSize: Constants.Icon.pointSize,
+            weight: .regular
+        )
         imageView.setContentHuggingPriority(.required, for: .vertical)
 
         messageLabel.font = .preferredFont(forTextStyle: .body)
@@ -75,14 +95,14 @@ final class FeedStateView: UIView {
         messageLabel.numberOfLines = 0
 
         var config = UIButton.Configuration.borderedProminent()
-        config.title = "Повторить"
+        config.title = Constants.Text.retry
         config.baseBackgroundColor = .adBrand
         config.baseForegroundColor = .white
         retryButton.configuration = config
         retryButton.addTarget(self, action: #selector(retryTapped), for: .touchUpInside)
 
         stack.axis = .vertical
-        stack.spacing = 12
+        stack.spacing = Constants.Layout.stackSpacing
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)

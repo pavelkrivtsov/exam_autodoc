@@ -13,6 +13,20 @@ private nonisolated enum FeedSection: Hashable, Sendable {
     case main
 }
 
+private enum Constants {
+    enum Text {
+        static let title = "Новости"
+    }
+
+    enum Layout {
+        static let spacing: CGFloat = 16
+        static let columnWidth: CGFloat = 300
+        static let estimatedItemHeight: CGFloat = 360
+        static let footerHeight: CGFloat = 44
+        static let stateHorizontalInset: CGFloat = 32
+    }
+}
+
 final class NewsFeedViewController: UIViewController {
 
     private typealias Section = FeedSection
@@ -20,8 +34,8 @@ final class NewsFeedViewController: UIViewController {
     private let viewModel: NewsFeedViewModel
     private var cancellables = Set<AnyCancellable>()
 
-    private var collectionView: UICollectionView!
-    private var dataSource: UICollectionViewDiffableDataSource<Section, NewsItem>!
+    private lazy var collectionView: UICollectionView = makeCollectionView()
+    private lazy var dataSource: UICollectionViewDiffableDataSource<Section, NewsItem> = makeDataSource()
     private weak var footerView: FeedFooterView?
 
     private lazy var refreshControl = BrandRefreshControl()
@@ -36,9 +50,8 @@ final class NewsFeedViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
-    // MARK: - Жизненный цикл
+    // MARK: - Lifecycle
 
-    /// Создаём иерархию программно — без storyboard/xib.
     override func loadView() {
         let root = UIView()
         root.backgroundColor = .adBackground
@@ -46,22 +59,57 @@ final class NewsFeedViewController: UIViewController {
 
         configureCollectionView()
         configureStateView()
-        configureDataSource()
+        _ = dataSource
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Новости"
+        title = Constants.Text.title
         navigationController?.navigationBar.prefersLargeTitles = true
         navigationController?.navigationBar.tintColor = .adBrand
         bind()
         viewModel.onViewDidLoad()
     }
 
-    // MARK: - Настройка
+    private func makeDataSource() -> UICollectionViewDiffableDataSource<Section, NewsItem> {
+        let dataSource = UICollectionViewDiffableDataSource<Section, NewsItem>(
+            collectionView: collectionView
+        ) { collectionView, indexPath, item in
+            guard let cell = collectionView.dequeueReusableCell(
+                withReuseIdentifier: NewsCell.reuseID,
+                for: indexPath
+            ) as? NewsCell else {
+                assertionFailure("Ожидалась NewsCell для \(NewsCell.reuseID)")
+                return UICollectionViewCell()
+            }
+            cell.configure(with: item)
+            return cell
+        }
 
-    private func configureCollectionView() {
-        collectionView = UICollectionView(frame: .zero, collectionViewLayout: makeLayout())
+        dataSource.supplementaryViewProvider = { [weak self] collectionView, kind, indexPath in
+            guard kind == UICollectionView.elementKindSectionFooter else { return nil }
+            guard let footer = collectionView.dequeueReusableSupplementaryView(
+                ofKind: kind,
+                withReuseIdentifier: FeedFooterView.reuseID,
+                for: indexPath
+            ) as? FeedFooterView else {
+                assertionFailure("Ожидался FeedFooterView для \(FeedFooterView.reuseID)")
+                return nil
+            }
+            self?.footerView = footer
+            footer.setLoading(self?.viewModel.phase == .loadingNext)
+            return footer
+        }
+
+        return dataSource
+    }
+}
+
+// MARK: - Настройка
+
+private extension NewsFeedViewController {
+    func makeCollectionView() -> UICollectionView {
+        let collectionView = UICollectionView(frame: .zero, collectionViewLayout: makeLayout())
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.backgroundColor = .clear
         collectionView.alwaysBounceVertical = true
@@ -72,6 +120,10 @@ final class NewsFeedViewController: UIViewController {
             forSupplementaryViewOfKind: UICollectionView.elementKindSectionFooter,
             withReuseIdentifier: FeedFooterView.reuseID
         )
+        return collectionView
+    }
+
+    func configureCollectionView() {
         view.addSubview(collectionView)
 
         refreshControl.addTarget(self, action: #selector(handleRefresh), for: .valueChanged)
@@ -85,24 +137,24 @@ final class NewsFeedViewController: UIViewController {
         ])
     }
 
-    private func makeLayout() -> UICollectionViewLayout {
+    func makeLayout() -> UICollectionViewLayout {
         let configuration = UICollectionViewCompositionalLayoutConfiguration()
-        configuration.interSectionSpacing = 16
+        configuration.interSectionSpacing = Constants.Layout.spacing
 
         return UICollectionViewCompositionalLayout(sectionProvider: { _, environment in
             let width = environment.container.effectiveContentSize.width
-            let columns = max(1, Int(width / 300))
-            let spacing: CGFloat = 16
+            let columns = max(1, Int(width / Constants.Layout.columnWidth))
+            let spacing = Constants.Layout.spacing
 
             let itemSize = NSCollectionLayoutSize(
                 widthDimension: .fractionalWidth(1.0 / CGFloat(columns)),
-                heightDimension: .estimated(360)
+                heightDimension: .estimated(Constants.Layout.estimatedItemHeight)
             )
             let item = NSCollectionLayoutItem(layoutSize: itemSize)
 
             let groupSize = NSCollectionLayoutSize(
                 widthDimension: .fractionalWidth(1.0),
-                heightDimension: .estimated(360)
+                heightDimension: .estimated(Constants.Layout.estimatedItemHeight)
             )
             let group = NSCollectionLayoutGroup.horizontal(
                 layoutSize: groupSize,
@@ -119,7 +171,7 @@ final class NewsFeedViewController: UIViewController {
 
             let footerSize = NSCollectionLayoutSize(
                 widthDimension: .fractionalWidth(1.0),
-                heightDimension: .absolute(44)
+                heightDimension: .absolute(Constants.Layout.footerHeight)
             )
             let footer = NSCollectionLayoutBoundarySupplementaryItem(
                 layoutSize: footerSize,
@@ -131,31 +183,7 @@ final class NewsFeedViewController: UIViewController {
         }, configuration: configuration)
     }
 
-    private func configureDataSource() {
-        dataSource = UICollectionViewDiffableDataSource<Section, NewsItem>(
-            collectionView: collectionView
-        ) { collectionView, indexPath, item in
-            let cell = collectionView.dequeueReusableCell(
-                withReuseIdentifier: NewsCell.reuseID, for: indexPath
-            ) as! NewsCell
-            cell.configure(with: item)
-            return cell
-        }
-
-        dataSource.supplementaryViewProvider = { [weak self] collectionView, kind, indexPath in
-            guard kind == UICollectionView.elementKindSectionFooter else { return nil }
-            let footer = collectionView.dequeueReusableSupplementaryView(
-                ofKind: kind,
-                withReuseIdentifier: FeedFooterView.reuseID,
-                for: indexPath
-            ) as! FeedFooterView
-            self?.footerView = footer
-            footer.setLoading(self?.viewModel.phase == .loadingNext)
-            return footer
-        }
-    }
-
-    private func configureStateView() {
+    func configureStateView() {
         stateView.translatesAutoresizingMaskIntoConstraints = false
         stateView.isHidden = true
         stateView.onRetry = { [weak self] in self?.viewModel.retry() }
@@ -163,14 +191,20 @@ final class NewsFeedViewController: UIViewController {
         NSLayoutConstraint.activate([
             stateView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             stateView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            stateView.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 32),
-            stateView.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -32)
+            stateView.leadingAnchor.constraint(
+                greaterThanOrEqualTo: view.leadingAnchor,
+                constant: Constants.Layout.stateHorizontalInset
+            ),
+            stateView.trailingAnchor.constraint(
+                lessThanOrEqualTo: view.trailingAnchor,
+                constant: -Constants.Layout.stateHorizontalInset
+            )
         ])
     }
 
     // MARK: - Привязка
 
-    private func bind() {
+    func bind() {
         viewModel.$items
             .receive(on: DispatchQueue.main)
             .sink { [weak self] items in
@@ -186,14 +220,14 @@ final class NewsFeedViewController: UIViewController {
             .store(in: &cancellables)
     }
 
-    private func apply(_ items: [NewsItem], animate: Bool = true) {
+    func apply(_ items: [NewsItem], animate: Bool = true) {
         var snapshot = NSDiffableDataSourceSnapshot<Section, NewsItem>()
         snapshot.appendSections([.main])
         snapshot.appendItems(items, toSection: .main)
         dataSource.apply(snapshot, animatingDifferences: animate)
     }
 
-    private func render(_ phase: NewsFeedViewModel.Phase) {
+    func render(_ phase: NewsFeedViewModel.Phase) {
         footerView?.setLoading(phase == .loadingNext)
 
         switch phase {
@@ -214,7 +248,7 @@ final class NewsFeedViewController: UIViewController {
 
     // MARK: - Действия
 
-    @objc private func handleRefresh() {
+    @objc func handleRefresh() {
         Task { await viewModel.refresh() }
     }
 }
@@ -222,11 +256,18 @@ final class NewsFeedViewController: UIViewController {
 // MARK: - UICollectionViewDelegate
 
 extension NewsFeedViewController: UICollectionViewDelegate {
-    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+    func collectionView(
+        _ collectionView: UICollectionView,
+        willDisplay cell: UICollectionViewCell,
+        forItemAt indexPath: IndexPath
+    ) {
         viewModel.loadNextPageIfNeeded(currentIndex: indexPath.item)
     }
 
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+    func collectionView(
+        _ collectionView: UICollectionView,
+        didSelectItemAt indexPath: IndexPath
+    ) {
         collectionView.deselectItem(at: indexPath, animated: true)
         guard let item = dataSource.itemIdentifier(for: indexPath) else { return }
         let detail = NewsDetailViewController(item: item)

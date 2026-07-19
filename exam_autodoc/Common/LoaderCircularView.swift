@@ -2,35 +2,58 @@
 //  LoaderCircularView.swift
 //  exam_autodoc
 //
-//  UIKit-версия кругового лоадера из дизайн-системы:
-//  дуга с угловым градиентом (прозрачный → цвет бренда) и вращением.
+//  Круговой лоадер: дуга с угловым градиентом (прозрачный → цвет бренда) и вращением.
 //
 
 import UIKit
 
-final class LoaderCircularView: UIView {
+private enum Constants {
+    enum Text {
+        static let accessibilityLabel = "Загрузка"
+    }
 
+    enum Animation {
+        static let defaultProgress: CGFloat = 0.75
+        static let duration: CFTimeInterval = 0.9
+        static let key = "loader.rotation"
+        static let keyPath = "transform.rotation.z"
+    }
+
+    enum Gradient {
+        static let midAlpha: CGFloat = 0.35
+        static let locations: [NSNumber] = [0, 0.55, 1]
+    }
+
+    enum SizeValue {
+        static let smallSide: CGFloat = 24
+        static let mediumSide: CGFloat = 40
+        static let smallLineWidth: CGFloat = 2
+        static let mediumLineWidth: CGFloat = 4
+    }
+}
+
+final class LoaderCircularView: UIView {
     enum Size {
         case small
         case medium
 
         var side: CGFloat {
             switch self {
-            case .small: return 24
-            case .medium: return 40
+            case .small: return Constants.SizeValue.smallSide
+            case .medium: return Constants.SizeValue.mediumSide
             }
         }
 
         var lineWidth: CGFloat {
             switch self {
-            case .small: return 2
-            case .medium: return 4
+            case .small: return Constants.SizeValue.smallLineWidth
+            case .medium: return Constants.SizeValue.mediumLineWidth
             }
         }
     }
 
     /// Доля дуги (0…1), как `progress` в SwiftUI-версии.
-    var progress: CGFloat = 0.75 {
+    var progress: CGFloat = Constants.Animation.defaultProgress {
         didSet {
             let clamped = min(max(progress, 0), 1)
             if clamped != progress {
@@ -56,14 +79,12 @@ final class LoaderCircularView: UIView {
     private let shapeLayer = CAShapeLayer()
     private var isAnimating = false
 
-    private let rotationKey = "loader.rotation"
-
     init(size: Size = .small, color: UIColor = .adBrand) {
         self.size = size
         self.color = color
         super.init(frame: CGRect(origin: .zero, size: CGSize(width: size.side, height: size.side)))
         isAccessibilityElement = true
-        accessibilityLabel = "Загрузка"
+        accessibilityLabel = Constants.Text.accessibilityLabel
         setupLayers()
         if hidesWhenStopped {
             isHidden = true
@@ -98,8 +119,8 @@ final class LoaderCircularView: UIView {
 
     func startAnimating() {
         isHidden = false
-        if progress < 0.75 {
-            progress = 0.75
+        if progress < Constants.Animation.defaultProgress {
+            progress = Constants.Animation.defaultProgress
         }
         guard !isAnimating else { return }
         isAnimating = true
@@ -108,7 +129,7 @@ final class LoaderCircularView: UIView {
 
     func stopAnimating() {
         isAnimating = false
-        layer.removeAnimation(forKey: rotationKey)
+        layer.removeAnimation(forKey: Constants.Animation.key)
         layer.transform = CATransform3DIdentity
         if hidesWhenStopped {
             isHidden = true
@@ -140,10 +161,10 @@ final class LoaderCircularView: UIView {
         let transparentBrand = color.withAlphaComponent(0)
         gradientLayer.colors = [
             transparentBrand.cgColor,
-            color.withAlphaComponent(0.35).cgColor,
+            color.withAlphaComponent(Constants.Gradient.midAlpha).cgColor,
             color.cgColor
         ]
-        gradientLayer.locations = [0, 0.55, 1]
+        gradientLayer.locations = Constants.Gradient.locations
     }
 
     private func makePath() -> UIBezierPath {
@@ -154,14 +175,14 @@ final class LoaderCircularView: UIView {
     }
 
     private func addRotationAnimation() {
-        layer.removeAnimation(forKey: rotationKey)
-        let animation = CABasicAnimation(keyPath: "transform.rotation.z")
+        layer.removeAnimation(forKey: Constants.Animation.key)
+        let animation = CABasicAnimation(keyPath: Constants.Animation.keyPath)
         animation.fromValue = 0
         animation.toValue = CGFloat.pi * 2
-        animation.duration = 0.9
+        animation.duration = Constants.Animation.duration
         animation.repeatCount = .infinity
         animation.isRemovedOnCompletion = false
         animation.timingFunction = CAMediaTimingFunction(name: .linear)
-        layer.add(animation, forKey: rotationKey)
+        layer.add(animation, forKey: Constants.Animation.key)
     }
 }

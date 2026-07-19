@@ -28,11 +28,9 @@ nonisolated struct NewsItem: Decodable, Sendable, Identifiable, Hashable {
     let categoryType: String
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, description
-        case publishedDate
+        case id, title, description, publishedDate, categoryType
         case fullURL = "fullUrl"
         case imageURL = "titleImageUrl"
-        case categoryType
     }
 
     static func == (lhs: NewsItem, rhs: NewsItem) -> Bool { lhs.id == rhs.id }

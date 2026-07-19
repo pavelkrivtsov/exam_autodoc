@@ -9,6 +9,14 @@
 import Foundation
 import Combine
 
+nonisolated private enum Constants {
+    static let defaultPageSize = 9
+    /// Догрузка, когда до конца осталось около 1/3 страницы (минимум 3 ячейки).
+    static let preloadPageFraction = 3
+    static let preloadMinRemaining = 3
+    static let firstPage = 1
+}
+
 @MainActor
 final class NewsFeedViewModel {
 
@@ -29,12 +37,15 @@ final class NewsFeedViewModel {
     private let service: any NewsServing
     private let pageSize: Int
 
-    private var nextPage = 1
+    private var nextPage = Constants.firstPage
     private var totalCount = 0
     private var seenIDs = Set<Int>()
     private var loadTask: Task<Void, Never>?
 
-    nonisolated init(service: any NewsServing = NewsService(), pageSize: Int = 9) {
+    nonisolated init(
+        service: any NewsServing = NewsService(),
+        pageSize: Int = Constants.defaultPageSize
+    ) {
         self.service = service
         self.pageSize = pageSize
     }
@@ -72,7 +83,10 @@ final class NewsFeedViewModel {
     /// пока пользователь ещё не дошёл до конца списка.
     func loadNextPageIfNeeded(currentIndex: Int) {
         guard !isLoading, hasMorePages, !items.isEmpty else { return }
-        let threshold = items.count - max(pageSize / 3, 3)
+        let threshold = items.count - max(
+            pageSize / Constants.preloadPageFraction,
+            Constants.preloadMinRemaining
+        )
         guard currentIndex >= threshold else { return }
         phase = .loadingNext
         startLoad(page: nextPage, replacingContents: false)
@@ -127,7 +141,7 @@ final class NewsFeedViewModel {
 
     private func resetPagination() {
         loadTask?.cancel()
-        nextPage = 1
+        nextPage = Constants.firstPage
         totalCount = 0
     }
 

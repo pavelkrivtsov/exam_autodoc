@@ -7,16 +7,16 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		90FB1E36300AA24600FB739C /* exam_autodoc.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = exam_autodoc.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		90FB1E36300AA24600FB739C /* Автодок.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Автодок.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		90FB1E48300AA24700FB739C /* Exceptions for "exam_autodoc" folder in "exam_autodoc" target */ = {
+		90FB1E48300AA24700FB739C /* Exceptions for "exam_autodoc" folder in "Автодок" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 90FB1E35300AA24600FB739C /* exam_autodoc */;
+			target = 90FB1E35300AA24600FB739C /* Автодок */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -24,7 +24,7 @@
 		90FB1E38300AA24600FB739C /* exam_autodoc */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				90FB1E48300AA24700FB739C /* Exceptions for "exam_autodoc" folder in "exam_autodoc" target */,
+				90FB1E48300AA24700FB739C /* Exceptions for "exam_autodoc" folder in "Автодок" target */,
 			);
 			path = exam_autodoc;
 			sourceTree = "<group>";
@@ -53,7 +53,7 @@
 		90FB1E37300AA24600FB739C /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				90FB1E36300AA24600FB739C /* exam_autodoc.app */,
+				90FB1E36300AA24600FB739C /* Автодок.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,9 +61,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		90FB1E35300AA24600FB739C /* exam_autodoc */ = {
+		90FB1E35300AA24600FB739C /* Автодок */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 90FB1E49300AA24700FB739C /* Build configuration list for PBXNativeTarget "exam_autodoc" */;
+			buildConfigurationList = 90FB1E49300AA24700FB739C /* Build configuration list for PBXNativeTarget "Автодок" */;
 			buildPhases = (
 				90FB1E32300AA24600FB739C /* Sources */,
 				90FB1E33300AA24600FB739C /* Frameworks */,
@@ -76,11 +76,11 @@
 			fileSystemSynchronizedGroups = (
 				90FB1E38300AA24600FB739C /* exam_autodoc */,
 			);
-			name = exam_autodoc;
+			name = "Автодок";
 			packageProductDependencies = (
 			);
 			productName = exam_autodoc;
-			productReference = 90FB1E36300AA24600FB739C /* exam_autodoc.app */;
+			productReference = 90FB1E36300AA24600FB739C /* Автодок.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -112,7 +112,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				90FB1E35300AA24600FB739C /* exam_autodoc */,
+				90FB1E35300AA24600FB739C /* Автодок */,
 			);
 		};
 /* End PBXProject section */
@@ -143,6 +143,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = A3JHD7MWF8;
@@ -160,6 +161,10 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.pavelkrivtsov.exam-autodoc";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -174,6 +179,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = A3JHD7MWF8;
@@ -191,6 +197,10 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.pavelkrivtsov.exam-autodoc";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -333,7 +343,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		90FB1E49300AA24700FB739C /* Build configuration list for PBXNativeTarget "exam_autodoc" */ = {
+		90FB1E49300AA24700FB739C /* Build configuration list for PBXNativeTarget "Автодок" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				90FB1E4A300AA24700FB739C /* Debug */,

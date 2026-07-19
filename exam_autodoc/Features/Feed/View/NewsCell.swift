@@ -8,9 +8,35 @@
 
 import UIKit
 
+private enum Constants {
+    enum Image {
+        static let placeholderName = "logo"
+        static let aspectRatio: CGFloat = 0.62
+        static let minWidth: CGFloat = 1
+        static let fallbackScreenScale: CGFloat = 2
+        static let fadeDuration: TimeInterval = 0.2
+    }
+
+    enum Layout {
+        static let cornerRadius: CGFloat = 16
+        static let categoryCornerRadius: CGFloat = 8
+        static let categoryFontSize: CGFloat = 11
+        static let categoryAlpha: CGFloat = 0.92
+        static let categoryInset = UIEdgeInsets(top: 3, left: 8, bottom: 3, right: 8)
+        static let categoryEdge: CGFloat = 10
+        static let textStackSpacing: CGFloat = 16
+        static let contentPadding: CGFloat = 16
+        static let textTopSpacing: CGFloat = 14
+        static let titleMaxLines = 3
+        static let gradientStartLocation: NSNumber = 0.55
+        static let gradientEndLocation: NSNumber = 1.0
+        static let gradientEndAlpha: CGFloat = 0.35
+    }
+}
+
 final class NewsCell: UICollectionViewCell {
     static let reuseID = "NewsCell"
-    static let imageAspectRatio: CGFloat = 0.62
+    static let imageAspectRatio = Constants.Image.aspectRatio
 
     private let imageView = UIImageView()
     private let gradientLayer = CAGradientLayer()
@@ -84,11 +110,11 @@ final class NewsCell: UICollectionViewCell {
         // Фрейм imageView устанавливается поздно в self-sizing проходе,
         // поэтому берём размер от ширины contentView — она надёжна.
         let width = contentView.bounds.width
-        guard width > 1 else { return }
-        let size = CGSize(width: width, height: width * Self.imageAspectRatio)
+        guard width > Constants.Image.minWidth else { return }
+        let size = CGSize(width: width, height: width * Constants.Image.aspectRatio)
 
         let scale = window?.screen.scale ?? traitCollection.displayScale
-        let effectiveScale = scale > 0 ? scale : 2
+        let effectiveScale = scale > 0 ? scale : Constants.Image.fallbackScreenScale
         let key = "\(url.absoluteString)|\(Int(size.width * effectiveScale))"
         guard key != requestedKey else { return }
         requestedKey = key
@@ -113,7 +139,7 @@ final class NewsCell: UICollectionViewCell {
         gradientLayer.isHidden = true
         imageView.contentMode = .scaleAspectFill
         imageView.backgroundColor = .adPlaceholderBackground
-        imageView.image = UIImage(named: "logo")
+        imageView.image = UIImage(named: Constants.Image.placeholderName)
     }
 
     private func apply(_ image: UIImage) {
@@ -121,7 +147,11 @@ final class NewsCell: UICollectionViewCell {
         gradientLayer.isHidden = false
         imageView.backgroundColor = .adSurface
         imageView.contentMode = .scaleToFill
-        UIView.transition(with: imageView, duration: 0.2, options: .transitionCrossDissolve) {
+        UIView.transition(
+            with: imageView,
+            duration: Constants.Image.fadeDuration,
+            options: .transitionCrossDissolve
+        ) {
             self.imageView.image = image
         }
     }
@@ -130,7 +160,7 @@ final class NewsCell: UICollectionViewCell {
 
     private func setup() {
         contentView.backgroundColor = .adSurface
-        contentView.layer.cornerRadius = 16
+        contentView.layer.cornerRadius = Constants.Layout.cornerRadius
         contentView.layer.cornerCurve = .continuous
         contentView.clipsToBounds = true
 
@@ -140,26 +170,29 @@ final class NewsCell: UICollectionViewCell {
 
         gradientLayer.colors = [
             UIColor.black.withAlphaComponent(0).cgColor,
-            UIColor.black.withAlphaComponent(0.35).cgColor
+            UIColor.black.withAlphaComponent(Constants.Layout.gradientEndAlpha).cgColor
         ]
-        gradientLayer.locations = [0.55, 1.0]
+        gradientLayer.locations = [
+            Constants.Layout.gradientStartLocation,
+            Constants.Layout.gradientEndLocation
+        ]
         imageView.layer.addSublayer(gradientLayer)
 
         spinner.translatesAutoresizingMaskIntoConstraints = false
 
         categoryLabel.translatesAutoresizingMaskIntoConstraints = false
-        categoryLabel.font = .systemFont(ofSize: 11, weight: .semibold)
+        categoryLabel.font = .systemFont(ofSize: Constants.Layout.categoryFontSize, weight: .semibold)
         categoryLabel.textColor = .white
-        categoryLabel.backgroundColor = UIColor.adBrand.withAlphaComponent(0.92)
-        categoryLabel.layer.cornerRadius = 8
+        categoryLabel.backgroundColor = UIColor.adBrand.withAlphaComponent(Constants.Layout.categoryAlpha)
+        categoryLabel.layer.cornerRadius = Constants.Layout.categoryCornerRadius
         categoryLabel.layer.cornerCurve = .continuous
         categoryLabel.clipsToBounds = true
-        categoryLabel.textInsets = UIEdgeInsets(top: 3, left: 8, bottom: 3, right: 8)
+        categoryLabel.textInsets = Constants.Layout.categoryInset
 
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = .preferredFont(forTextStyle: .headline)
         titleLabel.adjustsFontForContentSizeCategory = true
-        titleLabel.numberOfLines = 3
+        titleLabel.numberOfLines = Constants.Layout.titleMaxLines
         titleLabel.lineBreakMode = .byWordWrapping
         titleLabel.textColor = .adPrimaryText
         titleLabel.setContentCompressionResistancePriority(.required, for: .vertical)
@@ -173,7 +206,7 @@ final class NewsCell: UICollectionViewCell {
         // Нижний блок: заголовок + дата. Описание — только на экране деталей.
         let textStack = UIStackView(arrangedSubviews: [titleLabel, dateLabel])
         textStack.axis = .vertical
-        textStack.spacing = 16
+        textStack.spacing = Constants.Layout.textStackSpacing
         textStack.alignment = .fill
         textStack.translatesAutoresizingMaskIntoConstraints = false
 
@@ -182,21 +215,31 @@ final class NewsCell: UICollectionViewCell {
         contentView.addSubview(categoryLabel)
         contentView.addSubview(textStack)
 
-        let padding: CGFloat = 16
+        let padding = Constants.Layout.contentPadding
+        let categoryEdge = Constants.Layout.categoryEdge
         NSLayoutConstraint.activate([
             imageView.topAnchor.constraint(equalTo: contentView.topAnchor),
             imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             imageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            imageView.heightAnchor.constraint(equalTo: imageView.widthAnchor, multiplier: Self.imageAspectRatio),
+            imageView.heightAnchor.constraint(
+                equalTo: imageView.widthAnchor,
+                multiplier: Constants.Image.aspectRatio
+            ),
 
             spinner.centerXAnchor.constraint(equalTo: imageView.centerXAnchor),
             spinner.centerYAnchor.constraint(equalTo: imageView.centerYAnchor),
 
-            categoryLabel.leadingAnchor.constraint(equalTo: imageView.leadingAnchor, constant: 10),
-            categoryLabel.bottomAnchor.constraint(equalTo: imageView.bottomAnchor, constant: -10),
-            categoryLabel.trailingAnchor.constraint(lessThanOrEqualTo: imageView.trailingAnchor, constant: -10),
+            categoryLabel.leadingAnchor.constraint(equalTo: imageView.leadingAnchor, constant: categoryEdge),
+            categoryLabel.bottomAnchor.constraint(equalTo: imageView.bottomAnchor, constant: -categoryEdge),
+            categoryLabel.trailingAnchor.constraint(
+                lessThanOrEqualTo: imageView.trailingAnchor,
+                constant: -categoryEdge
+            ),
 
-            textStack.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 14),
+            textStack.topAnchor.constraint(
+                equalTo: imageView.bottomAnchor,
+                constant: Constants.Layout.textTopSpacing
+            ),
             textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
             textStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
             textStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -padding)

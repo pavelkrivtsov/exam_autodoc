@@ -8,41 +8,18 @@
 
 import Foundation
 
-enum NewsServiceError: LocalizedError {
-    case invalidResponse
-    case server(status: Int)
-    case decoding(any Error)
-    case transport(any Error)
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidResponse:
-            return "Получен некорректный ответ сервера."
-
-        case .server(let status):
-            return "Сервер вернул ошибку (\(status))."
-
-        case .decoding:
-            return "Не удалось обработать данные новостей."
-
-        case .transport(let error):
-            return (error as? URLError)?.localizedDescription ?? error.localizedDescription
-        }
+nonisolated private enum Constants {
+    enum Header {
+        static let acceptField = "Accept"
+        static let acceptJSON = "application/json"
     }
-}
 
-/// Абстракция сервиса: ViewModel можно тестировать со стабом.
-protocol NewsServing: Sendable {
-    func fetchNews(page: Int, pageSize: Int) async throws -> NewsPage
-}
-
-/// Формирует URL страниц. Нумерация страниц с 1, как в API.
-enum NewsEndpoint {
-    static let baseURL = URL(string: "https://webapi.autodoc.ru/api/news")!
-
-    static func page(_ page: Int, pageSize: Int) -> URL {
-        baseURL.appending(path: "\(page)/\(pageSize)")
+    enum Cache {
+        static let memoryCapacity = 16 * 1024 * 1024
+        static let diskCapacity = 128 * 1024 * 1024
     }
+
+    static let successStatusCodes = 200..<300
 }
 
 final class NewsService: NewsServing {
@@ -57,26 +34,32 @@ final class NewsService: NewsServing {
     func fetchNews(page: Int, pageSize: Int) async throws -> NewsPage {
         let url = NewsEndpoint.page(page, pageSize: pageSize)
         var request = URLRequest(url: url)
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(Constants.Header.acceptJSON, forHTTPHeaderField: Constants.Header.acceptField)
 
         let data: Data
         let response: URLResponse
         do {
             (data, response) = try await session.data(for: request)
         } catch {
+            logFailure("транспорт", url: url, detail: error.localizedDescription)
             throw NewsServiceError.transport(error)
         }
 
         guard let http = response as? HTTPURLResponse else {
+            logFailure("некорректный ответ", url: url)
             throw NewsServiceError.invalidResponse
         }
-        guard (200..<300).contains(http.statusCode) else {
+        guard Constants.successStatusCodes.contains(http.statusCode) else {
+            logFailure("HTTP \(http.statusCode)", url: url, body: data)
             throw NewsServiceError.server(status: http.statusCode)
         }
 
         do {
-            return try decoder.decode(NewsPage.self, from: data)
+            let page = try decoder.decode(NewsPage.self, from: data)
+            logSuccess(url: url, status: http.statusCode, body: data)
+            return page
         } catch {
+            logFailure("декодирование", url: url, detail: error.localizedDescription, body: data)
             throw NewsServiceError.decoding(error)
         }
     }
@@ -86,9 +69,49 @@ final class NewsService: NewsServing {
         configuration.waitsForConnectivity = true
         configuration.requestCachePolicy = .useProtocolCachePolicy
         configuration.urlCache = URLCache(
-            memoryCapacity: 16 * 1024 * 1024,
-            diskCapacity: 128 * 1024 * 1024
+            memoryCapacity: Constants.Cache.memoryCapacity,
+            diskCapacity: Constants.Cache.diskCapacity
         )
         return URLSession(configuration: configuration)
     }
 }
+
+#if DEBUG
+private extension NewsService {
+    /// Печатает успешный ответ в консоль - удобно сверять JSON с моделью.
+    func logSuccess(url: URL, status: Int, body: Data) {
+        print("[NewsService] ✅ \(status) \(url.absoluteString)\n\(body.prettyJSONString)")
+    }
+
+    /// Печатает причину ошибки и тело ответа, если есть - чтобы отлаживать сбои без прокси.
+    func logFailure(_ reason: String, url: URL, detail: String? = nil, body: Data? = nil) {
+        var lines = ["[NewsService] ❌ \(reason) \(url.absoluteString)"]
+        if let detail, !detail.isEmpty {
+            lines.append(detail)
+        }
+        if let body {
+            lines.append(body.prettyJSONString)
+        }
+        print(lines.joined(separator: "\n"))
+    }
+}
+
+private extension Data {
+    /// Форматирует JSON для консоли; иначе отдаёт raw UTF-8 - чтобы лог читался и при битом теле.
+    var prettyJSONString: String {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: self),
+            let pretty = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+            let string = String(data: pretty, encoding: .utf8)
+        else {
+            return String(data: self, encoding: .utf8) ?? "<binary \(count) bytes>"
+        }
+        return string
+    }
+}
+#else
+private extension NewsService {
+    func logSuccess(url: URL, status: Int, body: Data) {}
+    func logFailure(_ reason: String, url: URL, detail: String? = nil, body: Data? = nil) {}
+}
+#endif
