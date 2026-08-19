@@ -13,6 +13,7 @@ final class BrandRefreshControl: UIRefreshControl {
     private let loader = LoaderCircularView(size: .medium)
     private let toast = ToastBannerView()
 
+    /// Подменяет системный спиннер на брендовый LoaderCircularView.
     override init() {
         super.init()
         // Прячем системный индикатор — показываем свой.
@@ -29,11 +30,13 @@ final class BrandRefreshControl: UIRefreshControl {
         fatalError("init(coder:) has not been implemented")
     }
 
+    /// Запускает брендовый лоадер при начале pull-to-refresh.
     override func beginRefreshing() {
         super.beginRefreshing()
         loader.startAnimating()
     }
 
+    /// Делегирует завершение refresh в finish — без баннера при успехе.
     override func endRefreshing() {
         finish(failureMessage: nil)
     }
@@ -49,6 +52,7 @@ final class BrandRefreshControl: UIRefreshControl {
         }
     }
 
+    /// Поддерживает анимацию лоадера при промежуточных layout pass во время refresh.
     override func layoutSubviews() {
         super.layoutSubviews()
         if isRefreshing {

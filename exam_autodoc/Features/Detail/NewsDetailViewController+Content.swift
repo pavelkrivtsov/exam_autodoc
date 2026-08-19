@@ -3,7 +3,6 @@ import UIKit
 private enum NewsDetailContentConstants {
     enum Text {
         static let readMore = "Читать полностью"
-        static let metaSeparator = "  ·  "
     }
 
     enum Icon {
@@ -24,6 +23,11 @@ private enum NewsDetailContentConstants {
         static let spacingBeforeButton: CGFloat = 24
         static let metaFontSize: CGFloat = 12
         static let buttonImagePadding: CGFloat = 8
+    }
+
+    enum Animation {
+        static let imageFadeDuration: TimeInterval = 0.25
+        static let fallbackScreenScale: CGFloat = 2
     }
 }
 
@@ -47,8 +51,6 @@ extension NewsDetailViewController {
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(contentStack)
 
-        // Ограничиваем ширину контента для удобного чтения на широком iPad,
-        // при этом на узком iPhone контент занимает всю ширину.
         let preferredWidth = contentStack.widthAnchor.constraint(
             equalToConstant: NewsDetailContentConstants.Layout.preferredContentWidth
         )
@@ -64,7 +66,6 @@ extension NewsDetailViewController {
             contentStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             contentStack.centerXAnchor.constraint(equalTo: scrollView.frameLayoutGuide.centerXAnchor),
             contentStack.widthAnchor.constraint(lessThanOrEqualTo: scrollView.frameLayoutGuide.widthAnchor),
-            // Фиксируем ширину контента по видимой области — без горизонтального скролла.
             scrollView.contentLayoutGuide.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
             preferredWidth
         ])
@@ -74,9 +75,22 @@ extension NewsDetailViewController {
         addReadMoreButtonIfNeeded()
     }
 
-    /// Добавляет hero, если есть URL картинки - блок не нужен для текстовых новостей.
+    /// Загружает hero после layout — размер известен из constraints.
+    func loadHeroImageIfNeeded() {
+        guard viewModel.hasHeroImage else { return }
+        let size = heroImageView.bounds.size
+        heroImageView.setImage(
+            url: viewModel.imageURL,
+            targetSize: size,
+            scale: view.adEffectiveScreenScale(
+                fallback: NewsDetailContentConstants.Animation.fallbackScreenScale
+            ),
+            fadeDuration: NewsDetailContentConstants.Animation.imageFadeDuration
+        )
+    }
+
     func addHeroIfNeeded() {
-        guard item.imageURL != nil else { return }
+        guard viewModel.hasHeroImage else { return }
 
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
@@ -86,13 +100,7 @@ extension NewsDetailViewController {
         container.clipsToBounds = true
 
         heroImageView.translatesAutoresizingMaskIntoConstraints = false
-        heroImageView.contentMode = .scaleToFill
-        heroImageView.clipsToBounds = true
         container.addSubview(heroImageView)
-
-        heroSpinner.translatesAutoresizingMaskIntoConstraints = false
-        heroSpinner.startAnimating()
-        container.addSubview(heroSpinner)
 
         NSLayoutConstraint.activate([
             heroImageView.topAnchor.constraint(equalTo: container.topAnchor),
@@ -102,44 +110,37 @@ extension NewsDetailViewController {
             container.heightAnchor.constraint(
                 equalTo: container.widthAnchor,
                 multiplier: NewsDetailContentConstants.Layout.heroAspectRatio
-            ),
-            heroSpinner.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            heroSpinner.centerYAnchor.constraint(equalTo: container.centerYAnchor)
+            )
         ])
 
         contentStack.addArrangedSubview(container)
         contentStack.setCustomSpacing(NewsDetailContentConstants.Layout.spacingAfterHero, after: container)
     }
 
-    /// Добавляет мету, заголовок и описание - основной текстовый контент новости.
     func addTextBlocks() {
-        var metaText = item.categoryType
-        if let date = item.publishedDate {
-            let dateString = DateDisplay.string(from: date)
-            metaText = metaText.isEmpty
-                ? dateString
-                : "\(metaText)\(NewsDetailContentConstants.Text.metaSeparator)\(dateString)"
-        }
-        if !metaText.isEmpty {
+        if viewModel.hasMeta {
             let metaLabel = UILabel()
-            metaLabel.text = metaText.uppercased()
-            metaLabel.font = .systemFont(ofSize: NewsDetailContentConstants.Layout.metaFontSize, weight: .semibold)
+            metaLabel.text = viewModel.metaText.uppercased()
+            metaLabel.font = .systemFont(
+                ofSize: NewsDetailContentConstants.Layout.metaFontSize,
+                weight: .semibold
+            )
             metaLabel.textColor = .adBrand
             metaLabel.numberOfLines = 0
             contentStack.addArrangedSubview(metaLabel)
         }
 
         let titleLabel = UILabel()
-        titleLabel.text = item.title
+        titleLabel.text = viewModel.title
         titleLabel.font = .preferredFont(forTextStyle: .largeTitle)
         titleLabel.adjustsFontForContentSizeCategory = true
         titleLabel.textColor = .adPrimaryText
         titleLabel.numberOfLines = 0
         contentStack.addArrangedSubview(titleLabel)
 
-        if !item.description.isEmpty {
+        if viewModel.hasDescription {
             let bodyLabel = UILabel()
-            bodyLabel.text = item.description
+            bodyLabel.text = viewModel.description
             bodyLabel.font = .preferredFont(forTextStyle: .body)
             bodyLabel.adjustsFontForContentSizeCategory = true
             bodyLabel.textColor = .adPrimaryText
@@ -148,9 +149,8 @@ extension NewsDetailViewController {
         }
     }
 
-    /// Добавляет кнопку «Читать полностью», если fullURL подходит для Safari.
     func addReadMoreButtonIfNeeded() {
-        guard let url = item.fullURL, url.isSafariCompatible else { return }
+        guard viewModel.articleURL != nil else { return }
         let config = UIButton.Configuration.adBrandProminent(
             title: NewsDetailContentConstants.Text.readMore,
             size: .large,
@@ -162,9 +162,11 @@ extension NewsDetailViewController {
         let button = UIButton(configuration: config)
         button.addTarget(self, action: #selector(openFullArticle), for: .touchUpInside)
         if let last = contentStack.arrangedSubviews.last {
-            contentStack.setCustomSpacing(NewsDetailContentConstants.Layout.spacingBeforeButton, after: last)
+            contentStack.setCustomSpacing(
+                NewsDetailContentConstants.Layout.spacingBeforeButton,
+                after: last
+            )
         }
         contentStack.addArrangedSubview(button)
     }
 }
-

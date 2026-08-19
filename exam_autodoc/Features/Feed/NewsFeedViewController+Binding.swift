@@ -2,29 +2,6 @@ import UIKit
 import Combine
 
 extension NewsFeedViewController {
-    /// Кладёт оверлей заглушки поверх ленты - loading/empty/error без ломки large title.
-    func configureStateView() {
-        stateView.translatesAutoresizingMaskIntoConstraints = false
-        stateView.isHidden = true
-        stateView.onRetry = { [weak self] in self?.viewModel.retry() }
-        view.addSubview(stateView)
-
-        NSLayoutConstraint.activate([
-            stateView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            stateView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            stateView.leadingAnchor.constraint(
-                equalTo: view.leadingAnchor,
-                constant: NewsFeedConstants.Layout.stateHorizontalInset
-            ),
-            stateView.trailingAnchor.constraint(
-                equalTo: view.trailingAnchor,
-                constant: -NewsFeedConstants.Layout.stateHorizontalInset
-            )
-        ])
-    }
-
-    // MARK: - Привязка
-
     /// Подписывается на items и phase ViewModel - UI обновляется декларативно.
     func bind() {
         viewModel.$items
@@ -106,15 +83,4 @@ extension NewsFeedViewController {
             return .idle
         }
     }
-
-    // MARK: - Действия
-
-    /// Запускает pull-to-refresh и завершает control с баннером при ошибке.
-    @objc func handleRefresh() {
-        Task {
-            let failureMessage = await viewModel.refresh()
-            refreshControl.finish(failureMessage: failureMessage)
-        }
-    }
 }
-

@@ -38,6 +38,10 @@ final class NewsFeedViewController: UIViewController {
     lazy var dataSource: UICollectionViewDiffableDataSource<Section, NewsItem> = makeDataSource()
     weak var footerView: FeedFooterView?
 
+    /// Registration создаётся один раз в init — UIKit запрещает создавать его внутри provider.
+    var cellRegistration: UICollectionView.CellRegistration<NewsCell, NewsItem>!
+    var footerRegistration: UICollectionView.SupplementaryRegistration<FeedFooterView>!
+
     lazy var refreshControl = BrandRefreshControl()
     let stateView = FeedStateView()
 
@@ -45,6 +49,7 @@ final class NewsFeedViewController: UIViewController {
     init(viewModel: NewsFeedViewModel = NewsFeedViewModel()) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
+        makeRegistrations()
     }
 
     required init?(coder: NSCoder) {
@@ -53,7 +58,8 @@ final class NewsFeedViewController: UIViewController {
 
     // MARK: - Lifecycle
 
-    /// Собирает корень экрана без storyboard - сразу ставим collection и заглушку.
+    /// Создаёт иерархию view программно (без storyboard/xib).
+    /// Вызывается до viewDidLoad; здесь поднимаем collection, оверлей состояний и data source.
     override func loadView() {
         let root = UIView()
         root.backgroundColor = .adBackground
@@ -64,7 +70,7 @@ final class NewsFeedViewController: UIViewController {
         _ = dataSource
     }
 
-    /// Настраивает navigation и запускает первую загрузку - экран готов к данным.
+    /// Первичная настройка после создания view: navigation bar, подписка на ViewModel, старт загрузки.
     override func viewDidLoad() {
         super.viewDidLoad()
         title = NewsFeedConstants.Text.title

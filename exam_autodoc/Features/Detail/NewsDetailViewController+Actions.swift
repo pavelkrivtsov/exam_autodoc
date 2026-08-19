@@ -8,9 +8,8 @@ private enum NewsDetailActionsConstants {
 }
 
 extension NewsDetailViewController {
-    /// Открывает fullURL во встроенном Safari - битую ссылку ловим до краша и через delegate.
     @objc func openFullArticle() {
-        guard let url = item.fullURL, url.isSafariCompatible else {
+        guard let url = viewModel.articleURL else {
             showBrokenLinkToast()
             return
         }
@@ -19,7 +18,6 @@ extension NewsDetailViewController {
         present(safari, animated: true)
     }
 
-    /// Баннер под safe area - мягкий фидбек без модалки.
     func showBrokenLinkToast() {
         toast.show(
             NewsDetailActionsConstants.Text.brokenLink,
@@ -28,4 +26,3 @@ extension NewsDetailViewController {
         )
     }
 }
-

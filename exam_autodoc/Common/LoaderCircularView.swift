@@ -99,10 +99,12 @@ final class LoaderCircularView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    /// Фиксированный размер view под выбранный preset (.small / .medium).
     override var intrinsicContentSize: CGSize {
         CGSize(width: size.side, height: size.side)
     }
 
+    /// Обновляет path дуги и frame слоёв при изменении bounds (rotation, layout).
     override func layoutSubviews() {
         super.layoutSubviews()
         gradientLayer.frame = bounds
@@ -112,6 +114,7 @@ final class LoaderCircularView: UIView {
         shapeLayer.strokeEnd = progress
     }
 
+    /// Возобновляет вращение после возврата во view hierarchy (например, при reuse ячейки).
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if isAnimating, window != nil {

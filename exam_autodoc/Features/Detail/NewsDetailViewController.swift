@@ -11,19 +11,15 @@ import SafariServices
 
 final class NewsDetailViewController: UIViewController {
 
-    let item: NewsItem
+    let viewModel: NewsDetailViewModel
     let toast = ToastBannerView()
 
     let scrollView = UIScrollView()
     let contentStack = UIStackView()
-    let heroImageView = UIImageView()
-    let heroSpinner = LoaderCircularView(size: .small)
+    let heroImageView = RemoteImageView()
 
-    var imageTask: Task<Void, Never>?
-    var didRequestImage = false
-
-    init(item: NewsItem) {
-        self.item = item
+    init(viewModel: NewsDetailViewModel) {
+        self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -31,12 +27,9 @@ final class NewsDetailViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
-    deinit {
-        imageTask?.cancel()
-    }
-
     // MARK: - Lifecycle
 
+    /// Создаёт иерархию view программно и собирает scroll + контент новости.
     override func loadView() {
         let root = UIView()
         root.backgroundColor = .adBackground
@@ -44,11 +37,13 @@ final class NewsDetailViewController: UIViewController {
         setup()
     }
 
+    /// Первичная настройка после создания view: отключаем large title на экране детали.
     override func viewDidLoad() {
         super.viewDidLoad()
         navigationItem.largeTitleDisplayMode = .never
     }
 
+    /// После расчёта constraints известен реальный размер hero — запускаем загрузку картинки.
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         loadHeroImageIfNeeded()

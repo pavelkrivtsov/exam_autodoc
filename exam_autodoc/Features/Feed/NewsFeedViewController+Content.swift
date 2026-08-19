@@ -1,20 +1,24 @@
 import UIKit
 
 extension NewsFeedViewController {
-    /// Собирает collection view с layout и регистрацией ячеек - единая фабрика UI ленты.
+    /// Собирает collection view с layout - единая фабрика UI ленты.
     func makeCollectionView() -> UICollectionView {
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: makeLayout())
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.backgroundColor = .clear
         collectionView.alwaysBounceVertical = true
         collectionView.delegate = self
-        collectionView.register(NewsCell.self, forCellWithReuseIdentifier: NewsCell.reuseID)
-        collectionView.register(
-            FeedFooterView.self,
-            forSupplementaryViewOfKind: UICollectionView.elementKindSectionFooter,
-            withReuseIdentifier: FeedFooterView.reuseID
-        )
         return collectionView
+    }
+
+    /// Ширина одной ячейки по тем же правилам, что и compositional layout.
+    func itemWidth() -> CGFloat {
+        let spacing = NewsFeedConstants.Layout.spacing
+        let width = collectionView.bounds.width
+        let columns = max(1, Int(width / NewsFeedConstants.Layout.columnWidth))
+        let contentWidth = width - spacing * 2
+        let interItemSpacing = spacing * CGFloat(columns - 1)
+        return (contentWidth - interItemSpacing) / CGFloat(columns)
     }
 
     /// Встраивает collection на весь экран и подключает refresh - лента занимает root view.
@@ -29,6 +33,27 @@ extension NewsFeedViewController {
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+    }
+
+    /// Кладёт оверлей заглушки поверх ленты - loading/empty/error без ломки large title.
+    func configureStateView() {
+        stateView.translatesAutoresizingMaskIntoConstraints = false
+        stateView.isHidden = true
+        stateView.onRetry = { [weak self] in self?.viewModel.retry() }
+        view.addSubview(stateView)
+
+        NSLayoutConstraint.activate([
+            stateView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            stateView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            stateView.leadingAnchor.constraint(
+                equalTo: view.leadingAnchor,
+                constant: NewsFeedConstants.Layout.stateHorizontalInset
+            ),
+            stateView.trailingAnchor.constraint(
+                equalTo: view.trailingAnchor,
+                constant: -NewsFeedConstants.Layout.stateHorizontalInset
+            )
         ])
     }
 
@@ -79,28 +104,3 @@ extension NewsFeedViewController {
         }, configuration: configuration)
     }
 }
-
-// MARK: - UICollectionViewDelegate
-
-extension NewsFeedViewController: UICollectionViewDelegate {
-    /// При показе ячейки просит ViewModel догрузить страницу - пагинация без отдельного скролл-хендлера.
-    func collectionView(
-        _ collectionView: UICollectionView,
-        willDisplay cell: UICollectionViewCell,
-        forItemAt indexPath: IndexPath
-    ) {
-        viewModel.loadNextPageIfNeeded(currentIndex: indexPath.item)
-    }
-
-    /// Открывает экран детали выбранной новости.
-    func collectionView(
-        _ collectionView: UICollectionView,
-        didSelectItemAt indexPath: IndexPath
-    ) {
-        collectionView.deselectItem(at: indexPath, animated: true)
-        guard let item = dataSource.itemIdentifier(for: indexPath) else { return }
-        let detail = NewsDetailViewController(item: item)
-        navigationController?.pushViewController(detail, animated: true)
-    }
-}
-

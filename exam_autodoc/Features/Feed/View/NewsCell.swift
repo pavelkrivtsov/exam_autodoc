@@ -12,9 +12,6 @@ private enum Constants {
     enum Image {
         static let placeholder = "placeholder"
         static let aspectRatio: CGFloat = 0.62
-        static let minWidth: CGFloat = 1
-        static let fallbackScreenScale: CGFloat = 2
-        static let fadeDuration: TimeInterval = 0.2
     }
 
     enum Layout {
@@ -35,18 +32,12 @@ private enum Constants {
 }
 
 final class NewsCell: UICollectionViewCell {
-    static let reuseID = "NewsCell"
 
-    private let imageView = UIImageView()
+    private let remoteImageView = RemoteImageView()
     private let gradientLayer = CAGradientLayer()
     private let titleLabel = UILabel()
     private let categoryLabel = PaddingLabel()
     private let dateLabel = UILabel()
-    private let spinner = LoaderCircularView(size: .small)
-
-    private var imageURL: URL?
-    private var requestedKey: String?
-    private var imageTask: Task<Void, Never>?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -59,95 +50,39 @@ final class NewsCell: UICollectionViewCell {
 
     // MARK: - Конфигурация
 
-    func configure(with item: NewsItem) {
+    /// `imageTargetWidth` — ширина ячейки из layout, чтобы загрузчик знал размер без layoutSubviews.
+    func configure(with item: NewsItem, imageTargetWidth: CGFloat) {
         titleLabel.text = item.title
         categoryLabel.text = item.categoryType
         categoryLabel.isHidden = item.categoryType.isEmpty
         dateLabel.text = item.publishedDate.map(DateDisplay.string(from:))
         dateLabel.isHidden = item.publishedDate == nil
 
-        imageURL = item.imageURL
-        resetImage()
-        // На переиспользовании размеры ячейки уже валидны, а layoutSubviews может
-        // не вызваться (bounds не меняются) — поэтому запускаем загрузку здесь,
-        // чтобы сразу подхватить закэшированное изображение.
-        loadImageIfNeeded()
+        let imageHeight = imageTargetWidth * Constants.Image.aspectRatio
+        let targetSize = CGSize(width: imageTargetWidth, height: imageHeight)
+        remoteImageView.onStateChange = { [weak self] state in
+            self?.gradientLayer.isHidden = state != .loaded
+        }
+        remoteImageView.setImage(
+            url: item.imageURL,
+            targetSize: targetSize,
+            placeholder: UIImage(named: Constants.Image.placeholder)
+        )
     }
 
     // MARK: - Вёрстка
 
+    /// Подгоняет frame градиента под актуальные bounds картинки после layout pass.
     override func layoutSubviews() {
         super.layoutSubviews()
-        gradientLayer.frame = imageView.bounds
-        loadImageIfNeeded()
+        gradientLayer.frame = remoteImageView.imageContentView.bounds
     }
 
+    /// Сбрасывает загрузку изображения и градиент перед повторным использованием ячейки.
     override func prepareForReuse() {
         super.prepareForReuse()
-        imageTask?.cancel()
-        imageTask = nil
-        imageURL = nil
-        requestedKey = nil
-        resetImage()
-    }
-}
-
-// MARK: - Загрузка изображения
-
-private extension NewsCell {
-    func resetImage() {
-        imageView.image = nil
-        imageView.backgroundColor = .adSurface
-        if imageURL != nil {
-            spinner.startAnimating()
-        } else {
-            spinner.stopAnimating()
-            showPlaceholder()
-        }
-    }
-
-    func loadImageIfNeeded() {
-        guard let url = imageURL else { return }
-        // Фрейм imageView устанавливается поздно в self-sizing проходе,
-        // поэтому берём размер от ширины contentView — она надёжна.
-        let width = contentView.bounds.width
-        guard width > Constants.Image.minWidth else { return }
-        let size = CGSize(width: width, height: width * Constants.Image.aspectRatio)
-
-        let effectiveScale = adEffectiveScreenScale(fallback: Constants.Image.fallbackScreenScale)
-        let key = "\(url.absoluteString)|\(Int(size.width * effectiveScale))"
-        guard key != requestedKey else { return }
-        requestedKey = key
-
-        imageTask?.cancel()
-        imageTask = Task { [weak self] in
-            guard let self else { return }
-            do {
-                let image = try await ImageLoader.shared.image(for: url, targetSize: size, scale: effectiveScale)
-                if Task.isCancelled || self.imageURL != url { return }
-                self.apply(image)
-            } catch {
-                if Task.isCancelled || self.imageURL != url { return }
-                self.spinner.stopAnimating()
-                self.showPlaceholder()
-            }
-        }
-    }
-
-    /// Плейсхолдер для новостей без изображения (или при ошибке загрузки).
-    func showPlaceholder() {
+        remoteImageView.prepareForReuse()
         gradientLayer.isHidden = true
-        imageView.contentMode = .scaleAspectFill
-        imageView.backgroundColor = .adPlaceholderBackground
-        imageView.image = UIImage(named: Constants.Image.placeholder)
-    }
-
-    func apply(_ image: UIImage) {
-        spinner.stopAnimating()
-        gradientLayer.isHidden = false
-        imageView.backgroundColor = .adSurface
-        imageView.contentMode = .scaleToFill
-        imageView.setImage(image, fadedWith: Constants.Image.fadeDuration)
     }
 }
 
@@ -160,9 +95,7 @@ private extension NewsCell {
         contentView.layer.cornerCurve = .continuous
         contentView.clipsToBounds = true
 
-        imageView.clipsToBounds = true
-        imageView.contentMode = .scaleToFill
-        imageView.translatesAutoresizingMaskIntoConstraints = false
+        remoteImageView.translatesAutoresizingMaskIntoConstraints = false
 
         gradientLayer.colors = [
             UIColor.black.withAlphaComponent(0).cgColor,
@@ -172,9 +105,7 @@ private extension NewsCell {
             Constants.Layout.gradientStartLocation,
             Constants.Layout.gradientEndLocation
         ]
-        imageView.layer.addSublayer(gradientLayer)
-
-        spinner.translatesAutoresizingMaskIntoConstraints = false
+        remoteImageView.imageContentView.layer.addSublayer(gradientLayer)
 
         categoryLabel.translatesAutoresizingMaskIntoConstraints = false
         categoryLabel.font = .systemFont(ofSize: Constants.Layout.categoryFontSize, weight: .semibold)
@@ -199,41 +130,36 @@ private extension NewsCell {
         dateLabel.textColor = .adTertiaryText
         dateLabel.setContentCompressionResistancePriority(.required, for: .vertical)
 
-        // Нижний блок: заголовок + дата. Описание — только на экране деталей.
         let textStack = UIStackView(arrangedSubviews: [titleLabel, dateLabel])
         textStack.axis = .vertical
         textStack.spacing = Constants.Layout.textStackSpacing
         textStack.alignment = .fill
         textStack.translatesAutoresizingMaskIntoConstraints = false
 
-        contentView.addSubview(imageView)
-        contentView.addSubview(spinner)
+        contentView.addSubview(remoteImageView)
         contentView.addSubview(categoryLabel)
         contentView.addSubview(textStack)
 
         let padding = Constants.Layout.contentPadding
         let categoryEdge = Constants.Layout.categoryEdge
         NSLayoutConstraint.activate([
-            imageView.topAnchor.constraint(equalTo: contentView.topAnchor),
-            imageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            imageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            imageView.heightAnchor.constraint(
-                equalTo: imageView.widthAnchor,
+            remoteImageView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            remoteImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            remoteImageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            remoteImageView.heightAnchor.constraint(
+                equalTo: remoteImageView.widthAnchor,
                 multiplier: Constants.Image.aspectRatio
             ),
 
-            spinner.centerXAnchor.constraint(equalTo: imageView.centerXAnchor),
-            spinner.centerYAnchor.constraint(equalTo: imageView.centerYAnchor),
-
-            categoryLabel.leadingAnchor.constraint(equalTo: imageView.leadingAnchor, constant: categoryEdge),
-            categoryLabel.bottomAnchor.constraint(equalTo: imageView.bottomAnchor, constant: -categoryEdge),
+            categoryLabel.leadingAnchor.constraint(equalTo: remoteImageView.leadingAnchor, constant: categoryEdge),
+            categoryLabel.bottomAnchor.constraint(equalTo: remoteImageView.bottomAnchor, constant: -categoryEdge),
             categoryLabel.trailingAnchor.constraint(
-                lessThanOrEqualTo: imageView.trailingAnchor,
+                lessThanOrEqualTo: remoteImageView.trailingAnchor,
                 constant: -categoryEdge
             ),
 
             textStack.topAnchor.constraint(
-                equalTo: imageView.bottomAnchor,
+                equalTo: remoteImageView.bottomAnchor,
                 constant: Constants.Layout.textTopSpacing
             ),
             textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
@@ -247,10 +173,12 @@ private extension NewsCell {
 final class PaddingLabel: UILabel {
     var textInsets: UIEdgeInsets = .zero { didSet { invalidateIntrinsicContentSize() } }
 
+    /// Рисует текст с внутренними отступами — для чипа категории на превью.
     override func drawText(in rect: CGRect) {
         super.drawText(in: rect.inset(by: textInsets))
     }
 
+    /// Учитывает textInsets при расчёте размера, чтобы Auto Layout корректно лейаутил чип.
     override var intrinsicContentSize: CGSize {
         let size = super.intrinsicContentSize
         return CGSize(

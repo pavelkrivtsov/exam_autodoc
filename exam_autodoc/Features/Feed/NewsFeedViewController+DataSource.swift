@@ -1,39 +1,43 @@
 import UIKit
 
 extension NewsFeedViewController {
-    /// Создаёт DiffableDataSource для ячеек и футера.
+    /// Регистрации ячеек и supplementary views — один раз при инициализации VC.
+    func makeRegistrations() {
+        cellRegistration = UICollectionView.CellRegistration<NewsCell, NewsItem> {
+            [weak self] cell, _, item in
+            guard let self else { return }
+            cell.configure(with: item, imageTargetWidth: self.itemWidth())
+        }
+
+        footerRegistration = UICollectionView.SupplementaryRegistration<FeedFooterView>(
+            elementKind: UICollectionView.elementKindSectionFooter
+        ) { [weak self] footer, _, _ in
+            self?.footerView = footer
+            footer.onRetry = { [weak self] in self?.viewModel.retry() }
+            footer.apply(Self.footerMode(for: self?.viewModel.phase ?? .idle))
+        }
+    }
+
+    /// Создаёт DiffableDataSource для ячеек и футера через CellRegistration.
     func makeDataSource() -> UICollectionViewDiffableDataSource<Section, NewsItem> {
         let dataSource = UICollectionViewDiffableDataSource<Section, NewsItem>(
             collectionView: collectionView
         ) { collectionView, indexPath, item in
-            guard let cell = collectionView.dequeueReusableCell(
-                withReuseIdentifier: NewsCell.reuseID,
-                for: indexPath
-            ) as? NewsCell else {
-                assertionFailure("Ожидалась NewsCell для \(NewsCell.reuseID)")
-                return UICollectionViewCell()
-            }
-            cell.configure(with: item)
-            return cell
+            collectionView.dequeueConfiguredReusableCell(
+                using: self.cellRegistration,
+                for: indexPath,
+                item: item
+            )
         }
 
-        dataSource.supplementaryViewProvider = { [weak self] collectionView, kind, indexPath in
+        dataSource.supplementaryViewProvider = { collectionView, kind, indexPath in
             guard kind == UICollectionView.elementKindSectionFooter else { return nil }
-            guard let footer = collectionView.dequeueReusableSupplementaryView(
-                ofKind: kind,
-                withReuseIdentifier: FeedFooterView.reuseID,
+            return collectionView.dequeueConfiguredReusableSupplementary(
+                using: self.footerRegistration,
                 for: indexPath
-            ) as? FeedFooterView else {
-                assertionFailure("Ожидался FeedFooterView для \(FeedFooterView.reuseID)")
-                return nil
-            }
-            self?.footerView = footer
-            footer.onRetry = { [weak self] in self?.viewModel.retry() }
-            footer.apply(Self.footerMode(for: self?.viewModel.phase ?? .idle))
-            return footer
+            )
         }
 
         return dataSource
     }
 }
-
